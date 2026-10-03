@@ -146,9 +146,9 @@ const BANCO_PREGUNTAS = {
                 q: 'Deriva la potencia externa:',
 
                 opciones: [
-                    'A) 5(3x-1)⁴',
-                    'S) 5(3x-1)⁵',
-                    'D) (3x-1)⁴'
+                    'Z) 5(3x-1)⁴',
+                    'X) 5(3x-1)⁵',
+                    'C) (3x-1)⁴'
                 ],
 
                 correcta: 0
@@ -158,9 +158,9 @@ const BANCO_PREGUNTAS = {
                 q: 'Deriva lo interno (3x-1):',
 
                 opciones: [
-                    'A) 3x',
-                    'S) 3',
-                    'D) 1'
+                    'Z) 3x',
+                    'X) 3',
+                    'C) 1'
                 ],
 
                 correcta: 1
@@ -178,9 +178,9 @@ const BANCO_PREGUNTAS = {
                 q: 'Deriva la trigonométrica externa:',
 
                 opciones: [
-                    'A) sin(x³)',
-                    'S) -sin(x³)',
-                    'D) -cos(x³)'
+                    'Z) sin(x³)',
+                    'X) -sin(x³)',
+                    'C) -cos(x³)'
                 ],
 
                 correcta: 1
@@ -190,9 +190,9 @@ const BANCO_PREGUNTAS = {
                 q: 'Deriva lo interno (x³):',
 
                 opciones: [
-                    'A) 3x²',
-                    'S) 3x',
-                    'D) x²'
+                    'Z) 3x²',
+                    'X) 3x',
+                    'C) x²'
                 ],
 
                 correcta: 0
@@ -210,9 +210,9 @@ const BANCO_PREGUNTAS = {
                 q: 'Deriva el logaritmo externo:',
 
                 opciones: [
-                    'A) 1/x',
-                    'S) 1/sin(x)',
-                    'D) cos(x)'
+                    'Z) 1/x',
+                    'X) 1/sin(x)',
+                    'C) cos(x)'
                 ],
 
                 correcta: 1
@@ -222,9 +222,9 @@ const BANCO_PREGUNTAS = {
                 q: 'Deriva lo interno (sin(x)):',
 
                 opciones: [
-                    'A) cos(x)',
-                    'S) -cos(x)',
-                    'D) 1/cos(x)'
+                    'Z) cos(x)',
+                    'X) -cos(x)',
+                    'C) 1/cos(x)'
                 ],
 
                 correcta: 0
@@ -243,6 +243,7 @@ let pasoActual = 1;
 // ==================================================
 
 function preload() {
+
 }
 
 
@@ -338,29 +339,22 @@ function create() {
 
 
     // ==================================================
-    // TECLADO
+    // CONTROLES
     // ==================================================
 
     teclado = this.input.keyboard.addKeys({
 
         ARRIBA: Phaser.Input.Keyboard.KeyCodes.W,
-
         ABAJO: Phaser.Input.Keyboard.KeyCodes.S,
-
         IZQUIERDA: Phaser.Input.Keyboard.KeyCodes.A,
-
         DERECHA: Phaser.Input.Keyboard.KeyCodes.D,
 
         UNO: Phaser.Input.Keyboard.KeyCodes.ONE,
-
         DOS: Phaser.Input.Keyboard.KeyCodes.TWO,
-
         TRES: Phaser.Input.Keyboard.KeyCodes.THREE,
 
         Z: Phaser.Input.Keyboard.KeyCodes.Z,
-
         X: Phaser.Input.Keyboard.KeyCodes.X,
-
         C: Phaser.Input.Keyboard.KeyCodes.C
     });
 
@@ -464,15 +458,17 @@ function create() {
 
         callback: () => {
 
-            if (
-                tiempoLimite > 0 &&
-                !juegoCongelado
-            ) {
+            // EL TIEMPO CONTINÚA INCLUSO CUANDO
+            // EL JUGADOR ESTÁ CONGELADO
+
+            if (tiempoLimite > 0) {
 
                 tiempoLimite--;
+
             }
 
             actualizarUI();
+
         },
 
         loop: true
@@ -488,6 +484,7 @@ function create() {
         () => {
 
             disparar(this);
+
         }
     );
 }
@@ -499,10 +496,6 @@ function create() {
 
 function update() {
 
-    // ==================================================
-    // RECARGA MATEMÁTICA
-    // ==================================================
-
     if (juegoCongelado) {
 
         manejarRecarga();
@@ -513,6 +506,7 @@ function update() {
             enemigo => {
 
                 enemigo.body.setVelocity(0);
+
             }
         );
 
@@ -569,48 +563,30 @@ function update() {
     let velocidad = 300;
 
 
-    if (
-        teclado.IZQUIERDA.isDown
-    ) {
+    if (teclado.IZQUIERDA.isDown) {
 
-        jugador.body.setVelocityX(
-            -velocidad
-        );
+        jugador.body.setVelocityX(-velocidad);
+
+    } else if (teclado.DERECHA.isDown) {
+
+        jugador.body.setVelocityX(velocidad);
+
     }
 
 
-    else if (
-        teclado.DERECHA.isDown
-    ) {
+    if (teclado.ARRIBA.isDown) {
 
-        jugador.body.setVelocityX(
-            velocidad
-        );
-    }
+        jugador.body.setVelocityY(-velocidad);
 
+    } else if (teclado.ABAJO.isDown) {
 
-    if (
-        teclado.ARRIBA.isDown
-    ) {
+        jugador.body.setVelocityY(velocidad);
 
-        jugador.body.setVelocityY(
-            -velocidad
-        );
-    }
-
-
-    else if (
-        teclado.ABAJO.isDown
-    ) {
-
-        jugador.body.setVelocityY(
-            velocidad
-        );
     }
 
 
     // ==================================================
-    // ENEMIGOS
+    // MOVIMIENTO ENEMIGOS
     // ==================================================
 
     enemigos.getChildren().forEach(
@@ -625,10 +601,8 @@ function update() {
                     jugador,
                     160
                 );
-            }
 
-
-            else if (
+            } else if (
                 enemigo.tipo === 'Golem'
             ) {
 
@@ -637,10 +611,8 @@ function update() {
                     jugador,
                     50
                 );
-            }
 
-
-            else if (
+            } else if (
                 enemigo.tipo === 'Vortice'
             ) {
 
@@ -653,9 +625,7 @@ function update() {
                     );
 
 
-                if (
-                    distancia > 350
-                ) {
+                if (distancia > 350) {
 
                     this.physics.moveToObject(
                         enemigo,
@@ -663,11 +633,10 @@ function update() {
                         80
                     );
 
-                }
-
-                else {
+                } else {
 
                     enemigo.body.setVelocity(0);
+
                 }
             }
         }
@@ -787,7 +756,6 @@ function crearEnemigo(
 
 
     enemigo.tipo = tipo;
-
     enemigo.hp = hp;
 
 
@@ -802,7 +770,9 @@ function crearEnemigo(
 function disparar(escena) {
 
     if (juegoCongelado) {
+
         return;
+
     }
 
 
@@ -874,8 +844,8 @@ function impactarEnemigo(
         enemigo.tipo === 'Glifo'
     ) {
 
-        daño =
-            armaActual.dañoGlifo;
+        daño = armaActual.dañoGlifo;
+
     }
 
 
@@ -883,8 +853,8 @@ function impactarEnemigo(
         enemigo.tipo === 'Vortice'
     ) {
 
-        daño =
-            armaActual.dañoVortice;
+        daño = armaActual.dañoVortice;
+
     }
 
 
@@ -892,8 +862,8 @@ function impactarEnemigo(
         enemigo.tipo === 'Golem'
     ) {
 
-        daño =
-            armaActual.dañoGolem;
+        daño = armaActual.dañoGolem;
+
     }
 
 
@@ -905,6 +875,7 @@ function impactarEnemigo(
     ) {
 
         enemigo.destroy();
+
     }
 }
 
@@ -921,7 +892,6 @@ function cambiarArma(
 
     balasActuales =
         armaActual.balasMax;
-
 
     actualizarUI();
 }
@@ -962,6 +932,7 @@ function actualizarUI() {
         `[Disparo]: Click izquierdo\n` +
 
         `[Armas]: 1 Pistola | 2 Rifle | 3 Escopeta`
+
     );
 }
 
@@ -1002,7 +973,7 @@ function iniciarRecarga() {
 
 
 // ==================================================
-// MOSTRAR PASO
+// MOSTRAR PREGUNTA
 // ==================================================
 
 function mostrarPaso() {
@@ -1025,7 +996,8 @@ function mostrarPaso() {
 
         `👉 ${paso.opciones[0]}    👉 ${paso.opciones[1]}    👉 ${paso.opciones[2]}\n\n` +
 
-        `Z = A     X = S     C = D`
+        `Z = primera opción     X = segunda opción     C = tercera opción`
+
     );
 }
 
@@ -1045,8 +1017,6 @@ function manejarRecarga() {
     let seleccion = -1;
 
 
-    // Z = primera respuesta
-
     if (
         Phaser.Input.Keyboard.JustDown(
             teclado.Z
@@ -1054,10 +1024,9 @@ function manejarRecarga() {
     ) {
 
         seleccion = 0;
+
     }
 
-
-    // X = segunda respuesta
 
     if (
         Phaser.Input.Keyboard.JustDown(
@@ -1066,10 +1035,9 @@ function manejarRecarga() {
     ) {
 
         seleccion = 1;
+
     }
 
-
-    // C = tercera respuesta
 
     if (
         Phaser.Input.Keyboard.JustDown(
@@ -1078,6 +1046,7 @@ function manejarRecarga() {
     ) {
 
         seleccion = 2;
+
     }
 
 
@@ -1097,9 +1066,7 @@ function manejarRecarga() {
 
                 mostrarPaso();
 
-            }
-
-            else {
+            } else {
 
                 balasActuales =
                     armaActual.balasMax;
@@ -1113,9 +1080,7 @@ function manejarRecarga() {
                 actualizarUI();
             }
 
-        }
-
-        else {
+        } else {
 
             fondoMat.setStrokeStyle(
                 3,
