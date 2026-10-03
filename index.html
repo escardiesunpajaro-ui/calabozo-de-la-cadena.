@@ -79,6 +79,7 @@ let mouse;
 
 let enemigos;
 let balas;
+let proyectilesEnemigos;
 
 let tiempoLimite = 900;
 
@@ -88,6 +89,18 @@ let contenedorMatematicas;
 let fondoMat;
 
 let juegoCongelado = false;
+let jugadorMuerto = false;
+
+
+// ==================================================
+// VIDA DEL JUGADOR
+// ==================================================
+
+let vidaJugador = 100;
+const vidaMaxima = 100;
+
+let invulnerable = false;
+let tiempoInvulnerabilidad = 500;
 
 
 // ==================================================
@@ -337,6 +350,9 @@ function create() {
 
     balas = this.physics.add.group();
 
+    proyectilesEnemigos =
+        this.physics.add.group();
+
 
     // ==================================================
     // CONTROLES
@@ -369,10 +385,34 @@ function create() {
     generarEnemigos(this);
 
 
+    // ==================================================
+    // COLISIONES
+    // ==================================================
+
     this.physics.add.overlap(
         balas,
         enemigos,
         impactarEnemigo,
+        null,
+        this
+    );
+
+
+    // Contacto de enemigos con jugador
+    this.physics.add.overlap(
+        jugador,
+        enemigos,
+        contactoEnemigo,
+        null,
+        this
+    );
+
+
+    // Proyectiles de Vórtice contra jugador
+    this.physics.add.overlap(
+        jugador,
+        proyectilesEnemigos,
+        impactoProyectilEnemigo,
         null,
         this
     );
@@ -458,9 +498,6 @@ function create() {
 
         callback: () => {
 
-            // EL TIEMPO CONTINÚA INCLUSO CUANDO
-            // EL JUGADOR ESTÁ CONGELADO
-
             if (tiempoLimite > 0) {
 
                 tiempoLimite--;
@@ -476,7 +513,7 @@ function create() {
 
 
     // ==================================================
-    // DISPARAR
+    // DISPARO
     // ==================================================
 
     this.input.on(
@@ -496,6 +533,15 @@ function create() {
 
 function update() {
 
+    if (jugadorMuerto) {
+
+        jugador.body.setVelocity(0);
+
+        return;
+
+    }
+
+
     if (juegoCongelado) {
 
         manejarRecarga();
@@ -510,7 +556,16 @@ function update() {
             }
         );
 
+        proyectilesEnemigos.getChildren().forEach(
+            proyectil => {
+
+                proyectil.body.setVelocity(0);
+
+            }
+        );
+
         return;
+
     }
 
 
@@ -638,6 +693,23 @@ function update() {
                     enemigo.body.setVelocity(0);
 
                 }
+
+
+                // El Vórtice dispara cuando tiene
+                // al jugador a una distancia adecuada.
+                if (
+                    !enemigo.ultimoDisparo ||
+                    this.time.now - enemigo.ultimoDisparo > 2000
+                ) {
+
+                    dispararProyectilVortice(
+                        this,
+                        enemigo
+                    );
+
+                    enemigo.ultimoDisparo =
+                        this.time.now;
+                }
             }
         }
     );
@@ -758,18 +830,23 @@ function crearEnemigo(
     enemigo.tipo = tipo;
     enemigo.hp = hp;
 
+    enemigo.ultimoDisparo = 0;
+
 
     enemigos.add(enemigo);
 }
 
 
 // ==================================================
-// DISPARAR
+// DISPARAR JUGADOR
 // ==================================================
 
 function disparar(escena) {
 
-    if (juegoCongelado) {
+    if (
+        juegoCongelado ||
+        jugadorMuerto
+    ) {
 
         return;
 
@@ -822,6 +899,293 @@ function disparar(escena) {
         armaActual.velocidadBala,
         bala.body.velocity
     );
+}
+
+
+// ==================================================
+// DISPARO DEL VÓRTICE
+// ==================================================
+
+function dispararProyectilVortice(
+    escena,
+    vortice
+) {
+
+    if (
+        jugadorMuerto ||
+        juegoCongelado
+    ) {
+
+        return;
+    }
+
+
+    let proyectil =
+        escena.add.circle(
+            vortice.x,
+            vortice.y,
+            7,
+            0xff00ff
+        );
+
+
+    escena.physics.add.existing(
+        proyectil
+    );
+
+
+    proyectilesEnemigos.add(
+        proyectil
+    );
+
+
+    let angulo =
+        Phaser.Math.Angle.Between(
+            vortice.x,
+            vortice.y,
+            jugador.x,
+            jugador.y
+        );
+
+
+    escena.physics.velocityFromRotation(
+        angulo,
+        220,
+        proyectil.body.velocity
+    );
+
+
+    proyectil.daño = 10;
+
+
+    // El proyectil desaparece después
+    // de unos segundos si no impacta.
+    escena.time.delayedCall(
+        5000,
+        () => {
+
+            if (
+                proyectil &&
+                proyectil.active
+            ) {
+
+                proyectil.destroy();
+
+            }
+        }
+    );
+}
+
+
+// ==================================================
+// CONTACTO CON ENEMIGOS
+// ==================================================
+
+function contactoEnemigo(
+    jugadorObj,
+    enemigo
+) {
+
+    if (
+        jugadorMuerto ||
+        invulnerable
+    ) {
+
+        return;
+    }
+
+
+    // El Vórtice NO hace daño por contacto.
+    if (
+        enemigo.tipo === 'Vortice'
+    ) {
+
+        return;
+    }
+
+
+    if (
+        enemigo.tipo === 'Glifo'
+    ) {
+
+        recibirDaño(
+            10
+        );
+
+    }
+
+
+    if (
+        enemigo.tipo === 'Golem'
+    ) {
+
+        recibirDaño(
+            20
+        );
+
+    }
+}
+
+
+// ==================================================
+// IMPACTO DE PROYECTIL DEL VÓRTICE
+// ==================================================
+
+function impactoProyectilEnemigo(
+    jugadorObj,
+    proyectil
+) {
+
+    if (
+        jugadorMuerto ||
+        invulnerable
+    ) {
+
+        return;
+    }
+
+
+    proyectil.destroy();
+
+    recibirDaño(
+        10
+    );
+}
+
+
+// ==================================================
+// RECIBIR DAÑO
+// ==================================================
+
+function recibirDaño(
+    cantidad
+) {
+
+    if (
+        jugadorMuerto ||
+        invulnerable
+    ) {
+
+        return;
+    }
+
+
+    vidaJugador -= cantidad;
+
+
+    if (
+        vidaJugador < 0
+    ) {
+
+        vidaJugador = 0;
+    }
+
+
+    actualizarUI();
+
+
+    // Invulnerabilidad temporal
+    invulnerable = true;
+
+
+    jugador.setAlpha(0.4);
+
+
+    setTimeout(
+        () => {
+
+            if (
+                !jugadorMuerto
+            ) {
+
+                invulnerable = false;
+
+                jugador.setAlpha(1);
+
+            }
+
+        },
+        tiempoInvulnerabilidad
+    );
+
+
+    if (
+        vidaJugador <= 0
+    ) {
+
+        morirJugador();
+
+    }
+}
+
+
+// ==================================================
+// MUERTE DEL JUGADOR
+// ==================================================
+
+function morirJugador() {
+
+    jugadorMuerto = true;
+
+    jugador.body.setVelocity(0);
+
+
+    enemigos.getChildren().forEach(
+        enemigo => {
+
+            enemigo.body.setVelocity(0);
+
+        }
+    );
+
+
+    proyectilesEnemigos.getChildren().forEach(
+        proyectil => {
+
+            proyectil.body.setVelocity(0);
+
+        }
+    );
+
+
+    let fondoMuerte =
+        thisScene.add.rectangle(
+            400,
+            300,
+            800,
+            600,
+            0x000000,
+            0.75
+        ).setScrollFactor(0);
+
+
+    let textoMuerte =
+        thisScene.add.text(
+            400,
+            300,
+            'HAS MUERTO',
+            {
+                fontSize: '48px',
+                fill: '#ff0000',
+                fontStyle: 'bold'
+            }
+        )
+        .setOrigin(0.5)
+        .setScrollFactor(0);
+
+
+    let textoReinicio =
+        thisScene.add.text(
+            400,
+            360,
+            'Recarga la página para volver a jugar',
+            {
+                fontSize: '18px',
+                fill: '#ffffff'
+            }
+        )
+        .setOrigin(0.5)
+        .setScrollFactor(0);
 }
 
 
@@ -903,6 +1267,11 @@ function cambiarArma(
 
 function actualizarUI() {
 
+    if (!textoUI) {
+        return;
+    }
+
+
     let minutos =
         Math.floor(
             tiempoLimite / 60
@@ -920,6 +1289,8 @@ function actualizarUI() {
 
 
     textoUI.setText(
+
+        `❤️ VIDA: ${vidaJugador} / ${vidaMaxima}\n` +
 
         `⏱️ TIEMPO RESTANTE: ${minutos}:${segundos}\n` +
 
@@ -1099,6 +1470,15 @@ function manejarRecarga() {
         }
     }
 }
+
+
+// ==================================================
+// REFERENCIA A LA ESCENA
+// ==================================================
+
+let thisScene = null;
+
+const escenaOriginalCreate = create;
 
 </script>
 
