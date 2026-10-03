@@ -8,6 +8,7 @@
 
 ```
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+```
 
 <style>
     body {
@@ -31,7 +32,6 @@
         display: block;
     }
 </style>
-```
 
 </head>
 
@@ -91,6 +91,16 @@ let fondoMat;
 
 let juegoCongelado = false;
 let jugadorMuerto = false;
+
+
+// ==================================================
+// SISTEMA DE RONDAS
+// ==================================================
+
+let rondaActual = 1;
+let generandoNuevaRonda = false;
+
+let textoRonda;
 
 
 // ==================================================
@@ -380,10 +390,10 @@ function create() {
 
 
     // ==================================================
-    // ENEMIGOS
+    // PRIMERA RONDA
     // ==================================================
 
-    generarEnemigos(this);
+    iniciarRonda(this);
 
 
     // ==================================================
@@ -429,6 +439,21 @@ function create() {
             fontStyle: 'bold'
         }
     ).setScrollFactor(0);
+
+
+    textoRonda = this.add.text(
+        780,
+        20,
+        '',
+        {
+            fontSize: '22px',
+            fill: '#ffff00',
+            fontStyle: 'bold'
+        }
+    )
+    .setOrigin(1, 0)
+    .setScrollFactor(0);
+
 
     actualizarUI();
 
@@ -707,14 +732,79 @@ function update() {
 
 
 // ==================================================
-// GENERAR ENEMIGOS
+// SISTEMA DE RONDAS
 // ==================================================
 
-function generarEnemigos(escena) {
+function iniciarRonda(escena) {
+
+    generandoNuevaRonda = true;
+
+
+    // ==========================================
+    // CONFIGURACIÓN DE LA RONDA
+    // ==========================================
+
+    let cantidadGlifos = 0;
+    let cantidadVortices = 0;
+    let cantidadGolems = 0;
+
+
+    // RONDA 1
+    if (rondaActual === 1) {
+
+        cantidadGlifos = 5;
+    }
+
+
+    // RONDA 2
+    else if (rondaActual === 2) {
+
+        cantidadVortices = 4;
+    }
+
+
+    // RONDA 3
+    else if (rondaActual === 3) {
+
+        cantidadGlifos = 6;
+        cantidadVortices = 4;
+    }
+
+
+    // RONDA 4
+    else if (rondaActual === 4) {
+
+        cantidadGolems = 3;
+    }
+
+
+    // RONDA 5 EN ADELANTE
+    else {
+
+        let aumento =
+            rondaActual - 5;
+
+
+        cantidadGlifos =
+            6 + (aumento * 2);
+
+        cantidadVortices =
+            4 + aumento;
+
+        cantidadGolems =
+            2 + Math.floor(
+                aumento / 2
+            );
+    }
+
+
+    // ==========================================
+    // CREAR GLIFOS
+    // ==========================================
 
     for (
         let i = 0;
-        i < 25;
+        i < cantidadGlifos;
         i++
     ) {
 
@@ -727,9 +817,13 @@ function generarEnemigos(escena) {
     }
 
 
+    // ==========================================
+    // CREAR VÓRTICES
+    // ==========================================
+
     for (
         let i = 0;
-        i < 15;
+        i < cantidadVortices;
         i++
     ) {
 
@@ -742,9 +836,13 @@ function generarEnemigos(escena) {
     }
 
 
+    // ==========================================
+    // CREAR GOLEMS
+    // ==========================================
+
     for (
         let i = 0;
-        i < 10;
+        i < cantidadGolems;
         i++
     ) {
 
@@ -753,6 +851,95 @@ function generarEnemigos(escena) {
             'Golem',
             0xff5500,
             150
+        );
+    }
+
+
+    generandoNuevaRonda = false;
+
+    mostrarRonda();
+
+    actualizarUI();
+}
+
+
+// ==================================================
+// MOSTRAR RONDA
+// ==================================================
+
+function mostrarRonda() {
+
+    if (!textoRonda) {
+        return;
+    }
+
+
+    textoRonda.setText(
+        `RONDA ${rondaActual}`
+    );
+
+
+    textoRonda.setAlpha(1);
+
+
+    escenaJuego.tweens.add({
+
+        targets: textoRonda,
+
+        alpha: 0.35,
+
+        duration: 700,
+
+        yoyo: true,
+
+        repeat: 2
+    });
+}
+
+
+// ==================================================
+// COMPROBAR FIN DE RONDA
+// ==================================================
+
+function comprobarFinRonda() {
+
+    if (
+        jugadorMuerto ||
+        generandoNuevaRonda
+    ) {
+
+        return;
+    }
+
+
+    let enemigosVivos =
+        enemigos.countActive(true);
+
+
+    if (
+        enemigosVivos <= 0
+    ) {
+
+        generandoNuevaRonda = true;
+
+
+        // Pequeña pausa entre rondas
+        escenaJuego.time.delayedCall(
+            1000,
+            () => {
+
+                if (jugadorMuerto) {
+                    return;
+                }
+
+
+                rondaActual++;
+
+
+                iniciarRonda(
+                    escenaJuego
+                );
+            }
         );
     }
 }
@@ -769,31 +956,41 @@ function crearEnemigo(
     hp
 ) {
 
-    let x =
-        Phaser.Math.Between(
-            100,
-            2300
-        );
-
-    let y =
-        Phaser.Math.Between(
-            100,
-            2300
-        );
+    let x;
+    let y;
+    let distanciaJugador;
 
 
-    if (
-        Phaser.Math.Distance.Between(
-            x,
-            y,
-            1200,
-            1200
-        ) < 300
-    ) {
+    // ==========================================
+    // BUSCAR UNA POSICIÓN LEJANA DEL JUGADOR
+    // ==========================================
 
-        x += 500;
-        y += 500;
-    }
+    do {
+
+        x =
+            Phaser.Math.Between(
+                100,
+                2300
+            );
+
+        y =
+            Phaser.Math.Between(
+                100,
+                2300
+            );
+
+
+        distanciaJugador =
+            Phaser.Math.Distance.Between(
+                x,
+                y,
+                jugador.x,
+                jugador.y
+            );
+
+    } while (
+        distanciaJugador < 400
+    );
 
 
     let tamaño =
@@ -1019,15 +1216,25 @@ function impactoProyectilEnemigo(
 ) {
 
     if (
-        jugadorMuerto ||
-        invulnerable
+        jugadorMuerto
     ) {
 
         return;
     }
 
 
+    // El proyectil desaparece aunque
+    // el jugador esté temporalmente invulnerable.
     proyectil.destroy();
+
+
+    if (
+        invulnerable
+    ) {
+
+        return;
+    }
+
 
     recibirDaño(10);
 }
@@ -1165,6 +1372,19 @@ function morirJugador() {
     escenaJuego.add.text(
         400,
         360,
+        `Llegaste a la ronda ${rondaActual}`,
+        {
+            fontSize: '18px',
+            fill: '#ffffff'
+        }
+    )
+    .setOrigin(0.5)
+    .setScrollFactor(0);
+
+
+    escenaJuego.add.text(
+        400,
+        395,
         'Recarga la página para volver a jugar',
         {
             fontSize: '18px',
@@ -1227,6 +1447,10 @@ function impactarEnemigo(
 
         enemigo.destroy();
 
+
+        // Comprobar si este era el último
+        // enemigo de la ronda.
+        comprobarFinRonda();
     }
 }
 
@@ -1275,6 +1499,12 @@ function actualizarUI() {
             : segundos;
 
 
+    let enemigosRestantes =
+        enemigos
+            ? enemigos.countActive(true)
+            : 0;
+
+
     textoUI.setText(
 
         `❤️ VIDA: ${vidaJugador} / ${vidaMaxima}\n` +
@@ -1283,7 +1513,9 @@ function actualizarUI() {
 
         `💥 ARMA EQUIPADA: ${armaActual.nombre.toUpperCase()} (Dificultad: ${armaActual.dif})\n` +
 
-        `⚡ MUNICIÓN: ${balasActuales} / ${armaActual.balasMax}\n\n` +
+        `⚡ MUNICIÓN: ${balasActuales} / ${armaActual.balasMax}\n` +
+
+        `👾 ENEMIGOS RESTANTES: ${enemigosRestantes}\n\n` +
 
         `[Movimiento]: W A S D\n` +
 
@@ -1292,6 +1524,14 @@ function actualizarUI() {
         `[Armas]: 1 Pistola | 2 Rifle | 3 Escopeta`
 
     );
+
+
+    if (textoRonda) {
+
+        textoRonda.setText(
+            `RONDA ${rondaActual}`
+        );
+    }
 }
 
 
