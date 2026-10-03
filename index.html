@@ -16,7 +16,7 @@ const config = {
     width: 800,
     height: 600,
     parent: 'canvas-container',
-    backgroundColor: '#1a1a24', // Color de fondo sólido para asegurar que no se vea negro
+    backgroundColor: '#1a1a24',
     physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
     scene: { preload: preload, create: create, update: update }
 };
@@ -56,7 +56,7 @@ function preload() {}
 function create() {
     this.physics.world.setBounds(0, 0, 2400, 2400);
 
-    // Dibujar rejilla de fondo para notar que nos movemos en el mapa grande
+    // Dibujar rejilla de fondo
     let graphics = this.add.graphics();
     graphics.lineStyle(1, 0x333344, 1);
     for (let x = 0; x < 2400; x += 80) {
@@ -69,7 +69,7 @@ function create() {
     }
     graphics.strokePath();
 
-    // Crear Jugador (Cuadrado Verde explícito)
+    // Crear Jugador explícito
     jugador = this.add.rectangle(1200, 1200, 32, 32, 0x00ff00);
     this.physics.add.existing(jugador);
     jugador.body.setCollideWorldBounds(true);
@@ -221,8 +221,8 @@ function mostrarPaso() {
         `⚠️ MÓDULO DE DERIVACIÓN REQUERIDO (REGLA DE LA CADENA)\n` +
         `Función actual:  ${preguntaActual.f}\n\n` +
         `PASO ${pasoActual}: ${paso.q}\n` +
-        `Presiona la tecla correspondiente:\n` +
-        `👉 ${paso.opciones[0]}   |   👉 ${paso.opciones[1]}   |   👉 ${paso.opciones[2]}`
+        `Presiona la tecla correspondiente:\n\n` +
+        `👉 ${paso.opciones[0]}       👉 ${paso.opciones[1]}       👉 ${paso.opciones[2]}`
     );
 }
 
