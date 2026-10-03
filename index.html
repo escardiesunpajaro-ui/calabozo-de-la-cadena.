@@ -69,7 +69,7 @@ function create() {
     }
     graphics.strokePath();
 
-    // Crear Jugador explícito
+    // Crear Jugador
     jugador = this.add.rectangle(1200, 1200, 32, 32, 0x00ff00);
     this.physics.add.existing(jugador);
     jugador.body.setCollideWorldBounds(true);
@@ -94,8 +94,8 @@ function create() {
 
     // Módulo de Recarga Matemática ordenado abajo
     contenedorMatematicas = this.add.container(400, 480).setScrollFactor(0);
-    fondoMat = this.add.rectangle(0, 0, 700, 200, 0x0b0b14, 0.95).setStrokeStyle(3, 0xffaa00);
-    textoMatematicas = this.add.text(-320, -80, '', { fontSize: '16px', fill: '#ffffff', fontStyle: 'bold', lineSpacing: 8 });
+    fondoMat = this.add.rectangle(0, 0, 720, 200, 0x0b0b14, 0.95).setStrokeStyle(3, 0xffaa00);
+    textoMatematicas = this.add.text(-340, -80, '', { fontSize: '15px', fill: '#ffffff', fontStyle: 'bold', lineSpacing: 8 });
     contenedorMatematicas.add([fondoMat, textoMatematicas]);
     contenedorMatematicas.setVisible(false);
 
