@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calabozo de la Cadena</title>
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: sans-serif; }
+        #canvas-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
+    </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    parent: 'canvas-container',
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+    scene: { preload: preload, create: create, update: update }
+};
+
+const game = new Phaser.Game(config);
+
+// Variables de juego
+let jugador, cursores, teclado, mouse;
+let enemigos, balas;
+let tiempoLimite = 900; // 15 min en segundos
+let textoUI, textoMatematicas, contenedorMatematicas;
+let juegoCongelado = false;
+
+// Configuración de Armas
+const ARMAS = {
+    PISTOLA: { nombre: 'Pistola', balasMax: 6, dañoGlifo: 20, dañoVortice: 20, dañoGolem: 10, velocidadBala: 400, dif: 'Fácil' },
+    RIFLE: { nombre: 'Rifle', balasMax: 15, dañoGlifo: 10, dañoVortice: 10, dañoGolem: 10, velocidadBala: 600, dif: 'Medio' },
+    ESCOPETA: { nombre: 'Escopeta', balasMax: 2, dañoGlifo: 76, dañoVortice: 76, dañoGolem: 76, velocidadBala: 300, dif: 'Difícil' }
+};
+let armaActual = ARMAS.PISTOLA;
+let balasActuales = armaActual.balasMax;
+
+// Banco de Ejercicios de Regla de la Cadena
+const BANCO_PREGUNTAS = {
+    'Fácil': [
+        { f: 'y = (3x - 1)⁵', p1: { q: 'Deriva la potencia externa:', opciones: ['5(3x-1)⁴', '5(3x-1)⁵', '(3x-1)⁴'], correcta: 0 }, p2: { q: 'Deriva lo interno (3x-1):', opciones: ['3x', '3', '1'], correcta: 1 } }
+    ],
+    'Medio': [
+        { f: 'y = cos(x³)', p1: { q: 'Deriva la trigonométrica externa:', opciones: ['sin(x³)', '-sin(x³)', '-cos(x³)'], correcta: 1 }, p2: { q: 'Deriva lo interno (x³):', opciones: ['3x²', '3x', 'x²'], correcta: 0 } }
+    ],
+    'Difícil': [
+        { f: 'y = ln(sin(x))', p1: { q: 'Deriva el logaritmo externo:', opciones: ['1/x', '1/sin(x)', 'cos(x)'], correcta: 1 }, p2: { q: 'Deriva lo interno (sin(x)):', opciones: ['cos(x)', '-cos(x)', '1/cos(x)'], correcta: 0 } }
+    ]
+};
+let preguntaActual = null;
+let pasoActual = 1;
+
+function preload() {}
+
+function create() {
+    // Definir límites de un MAPA GRANDE (2400x2400 píxeles)
+    this.physics.world.setBounds(0, 0, 2400, 2400);
+
+    // Crear Jugador (Cuadrado Verde)
+    jugador = this.add.rectangle(1200, 1200, 32, 32, 0x00ff00);
+    this.physics.add.existing(jugador);
+    jugador.body.setCollideWorldBounds(true);
+
+    // Cámara sigue al jugador
+    this.cameras.main.setBounds(0, 0, 2400, 2400);
+    this.cameras.main.startFollow(jugador);
+
+    // Grupos
+    enemigos = this.physics.add.group();
+    balas = this.physics.add.group();
+
+    // Controles
+    cursores = this.input.keyboard.createCursorKeys();
+    teclado = this.input.keyboard.addKeys('UNO,DOS,TRES,A,S,D');
+    mouse = this.input.activePointer;
+
+    // Generar Enemigos por el mapa grande
+    generarEnemigos(this);
+
+    // Colisiones
+    this.physics.add.overlap(balas, enemigos, impactarEnemigo, null, this);
+
+    // INTERFAZ GRÁFICA Fija en la pantalla (ScrollFactor = 0)
+    textoUI = this.add.text(16, 16, '', { fontSize: '18px', fill: '#fff', backgroundColor: '#00000088' }).setScrollFactor(0);
+    actualizarUI();
+
+    // Contenedor oculto para la recarga matemática
+    contenedorMatematicas = this.add.container(400, 450).setScrollFactor(0);
+    let fondoMat = this.add.rectangle(0, 0, 600, 180, 0x111122, 0.95).setStrokeStyle(3, 0xffaa00);
+    textoMatematicas = this.add.text(-280, -70, '', { fontSize: '16px', fill: '#fff', wordWrap: { width: 560 } });
+    contenedorMatematicas.add([fondoMat, textoMatematicas]);
+    contenedorMatematicas.setVisible(false);
+
+    // Reloj global (1 segundo)
+    this.time.addEvent({ delay: 1000, callback: () => { if (tiempoLimite > 0) tiempoLimite--; actualizarUI(); }, loop: true });
+
+    // Click para disparar
+    this.input.on('pointerdown', () => { disparar(this); });
+}
+
+function update() {
+    if (juegoCongelado) {
+        // En modo congelado manejamos las respuestas A, S, D
+        manejarRecarga();
+        jugador.body.setVelocity(0);
+        enemigos.getChildren().forEach(e => e.body.setVelocity(0));
+        return;
+    }
+
+    // Cambio de armas con teclas 1, 2 o 3
+    if (Phaser.Input.Keyboard.JustDown(teclado.UNO)) cambiarArma(ARMAS.PISTOLA);
+    if (Phaser.Input.Keyboard.JustDown(teclado.DOS)) cambiarArma(ARMAS.RIFLE);
+    if (Phaser.Input.Keyboard.JustDown(teclado.TRES)) cambiarArma(ARMAS.ESCOPETA);
+
+    // Movimiento del jugador
+    jugador.body.setVelocity(0);
+    let v = 250;
+    if (cursores.left.isDown) jugador.body.setVelocityX(-v);
+    else if (cursores.right.isDown) jugador.body.setVelocityX(v);
+    if (cursores.up.isDown) jugador.body.setVelocityY(-v);
+    else if (cursores.down.isDown) jugador.body.setVelocityY(v);
+
+    // Inteligencia Artificial de los Enemigos (Te persiguen si no está congelado)
+    enemigos.getChildren().forEach(enemigo => {
+        if (enemigo.tipo === 'Glifo') { // Rápido
+            this.physics.moveToObject(enemigo, jugador, 180);
+        } else if (enemigo.tipo === 'Golem') { // Lento
+            this.physics.moveToObject(enemigo, jugador, 60);
+        } else if (enemigo.tipo === 'Vortice') { // Se queda lejos y apunta
+            let dist = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, jugador.x, jugador.y);
+            if (dist > 300) this.physics.moveToObject(enemigo, jugador, 90);
+            else enemigo.body.setVelocity(0);
+        }
+    });
+}
+
+function generarEnemigos(escena) {
+    // Esparcir 20 Glifos, 15 Vórtices y 10 Gólems aleatoriamente por el mapa grande
+    for (let i = 0; i < 20; i++) crearEnemigo(escena, 'Glifo', 0x00ffff, 20);
+    for (let i = 0; i < 15; i++) crearEnemigo(escena, 'Vortice', '0xff00ff', 20);
+    for (let i = 0; i < 10; i++) crearEnemigo(escena, 'Golem', 0xff5500, 150);
+}
+
+function crearEnemigo(escena, tipo, color, hp) {
+    let x = Phaser.Math.Between(100, 2300);
+    let y = Phaser.Math.Between(100, 2300);
+    // Evitar que aparezcan encima del jugador al inicio
+    if (Phaser.Math.Distance.Between(x, y, 1200, 1200) < 300) { x += 400; y += 400; }
+    
+    let e = escena.add.rectangle(x, y, tipo === 'Golem' ? 48 : 24, tipo === 'Golem' ? 48 : 24, color);
+    escena.physics.add.existing(e);
+    e.tipo = tipo;
+    e.hp = hp;
+    enemigos.add(e);
+}
+
+function disparar(escena) {
+    if (juegoCongelado) return;
+    if (balasActuales <= 0) {
+        iniciarRecarga();
+        return;
+    }
+
+    balasActuales--;
+    actualizarUI();
+
+    // Crear bala hacia la posición del mouse
+    let bala = escena.add.circle(jugador.x, jugador.y, 5, 0xffff00);
+    escena.physics.add.existing(bala);
+    balas.add(bala);
+
+    let angulo = Phaser.Math.Angle.Between(jugador.x, jugador.y, escena.cameras.main.scrollX + mouse.x, escena.cameras.main.scrollY + mouse.y);
+    escena.physics.velocityFromRotation(angulo, armaActual.velocidadBala, bala.body.velocity);
+}
+
+function impactarEnemigo(bala, enemigo) {
+    bala.destroy();
+    let daño = 0;
+    if (enemigo.tipo === 'Glifo') daño = armaActual.dañoGlifo;
+    if (enemigo.tipo === 'Vortice') daño = armaActual.dañoVortice;
+    if (enemigo.tipo === 'Golem') daño = armaActual.dañoGolem;
+
+    enemigo.hp -= daño;
+    if (enemigo.hp <= 0) enemigo.destroy();
+}
+
+function cambiarArma(nuevaArmas) {
+    armaActual = nuevaArmas;
+    balasActuales = armaActual.balasMax;
+    actualizarUI();
+}
+
+function actualizarUI() {
+    let min = Math.floor(tiempoLimite / 60);
+    let seg = tiempoLimite % 60;
+    seg = seg < 10 ? '0' + seg : seg;
+    
+    textoUI.setText(
+        `⏱️ Tiempo: ${min}:${seg}\n` +
+        `🔫 Arma: ${armaActual.nombre} (${armaActual.dif})\n` +
+        `⚡ Munición: ${balasActuales}/${armaActual.balasMax}\n\n` +
+        `[Controles]: Flechas = Moverse | Click = Disparar\n` +
+        `[Teclas 1, 2, 3]: Cambiar de Arma`
+    );
+}
+
+function iniciarRecarga() {
+    juegoCongelado = true;
+    pasoActual = 1;
+    
+    // Agarrar una pregunta al azar según la dificultad del arma
+    let lista = BANCO_PREGUNTAS[armaActual.dif];
+    preguntaActual = lista[Phaser.Math.Between(0, lista.length - 1)];
+    
+    contenedorMatematicas.setVisible(true);
+    mostrarPaso();
+}
+
+function mostrarPaso() {
+    let paso = pasoActual === 1 ? preguntaActual.p1 : preguntaActual.p2;
+    textoMatematicas.setText(
+        `🚨 ¡RECARGA REQUERIDA! REGLA DE LA CADENA\n` +
+        `Función original: ${preguntaActual.f}\n\n` +
+        `PASO ${pasoActual}: ${paso.q}\n` +
+        `[Teclado A]: ${paso.opciones[0]}\n` +
+        `[Teclado S]: ${paso.opciones[1]}\n` +
+        `[Teclado D]: ${paso.opciones[2]}`
+    );
+}
+
+function manejarRecarga() {
+    let paso = pasoActual === 1 ? preguntaActual.p1 : preguntaActual.p2;
+    let seleccion = -1;
+
+    if (Phaser.Input.Keyboard.JustDown(teclado.A)) seleccion = 0;
+    if (Phaser.Input.Keyboard.JustDown(teclado.S)) seleccion = 1;
+    if (Phaser.Input.Keyboard.JustDown(teclado.D)) seleccion = 2;
+
+    if (seleccion !== -1) {
+        if (seleccion === paso.correcta) {
+            if (pasoActual === 1) {
+                pasoActual = 2;
+                mostrarPaso();
+            } else {
+                // Éxito total: Munición llena y descongelamos
+                balasActuales = armaActual.balasMax;
+                juegoCongelado = false;
+                contenedorMatematicas.setVisible(false);
+                actualizarUI();
+            }
+        } else {
+            // Error: castigo de tiempo o parpadeo (por ahora reinicia el paso)
+            textoMatematicas.setText(`❌ ¡Incorrecto! Intenta el paso ${pasoActual} de nuevo...\n\n` + textoMatematicas.text);
+        }
+    }
+}
+</script>
+</body>
+</html>
