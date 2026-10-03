@@ -1,257 +1,1014 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calabozo de la Cadena</title>
-    <script src="https://jsdelivr.net"></script>
-    <style>
-        body { margin: 0; background-color: #111; overflow: hidden; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    </style>
+
+```
+<!-- Phaser -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        background-color: #111;
+        overflow: hidden;
+        font-family: sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    #canvas-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    canvas {
+        display: block;
+    }
+</style>
+```
+
 </head>
+
 <body>
+
 <div id="canvas-container"></div>
+
 <script>
 const config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
     parent: 'canvas-container',
+
     backgroundColor: '#1a1a24',
-    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
-    scene: { preload: preload, create: create, update: update }
+
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: {
+                y: 0
+            },
+            debug: false
+        }
+    },
+
+    scene: {
+        preload: preload,
+        create: create,
+        update: update
+    }
 };
 
 const game = new Phaser.Game(config);
 
-let jugador, cursores, teclado, mouse;
-let enemigos, balas;
-let tiempoLimite = 900; 
-let textoUI, textoMatematicas, contenedorMatematicas, fondoMat;
+let jugador;
+let cursores;
+let teclado;
+let mouse;
+
+let enemigos;
+let balas;
+
+let tiempoLimite = 900;
+
+let textoUI;
+let textoMatematicas;
+let contenedorMatematicas;
+let fondoMat;
+
 let juegoCongelado = false;
 
 const ARMAS = {
-    PISTOLA: { nombre: 'Pistola', balasMax: 6, dañoGlifo: 20, dañoVortice: 20, dañoGolem: 10, velocidadBala: 450, dif: 'Fácil' },
-    RIFLE: { nombre: 'Rifle', balasMax: 15, dañoGlifo: 10, dañoVortice: 10, dañoGolem: 10, velocidadBala: 650, dif: 'Medio' },
-    ESCOPETA: { nombre: 'Escopeta', balasMax: 2, dañoGlifo: 76, dañoVortice: 76, dañoGolem: 76, velocidadBala: 350, dif: 'Difícil' }
+
+    PISTOLA: {
+        nombre: 'Pistola',
+        balasMax: 6,
+        dañoGlifo: 20,
+        dañoVortice: 20,
+        dañoGolem: 10,
+        velocidadBala: 450,
+        dif: 'Fácil'
+    },
+
+    RIFLE: {
+        nombre: 'Rifle',
+        balasMax: 15,
+        dañoGlifo: 10,
+        dañoVortice: 10,
+        dañoGolem: 10,
+        velocidadBala: 650,
+        dif: 'Medio'
+    },
+
+    ESCOPETA: {
+        nombre: 'Escopeta',
+        balasMax: 2,
+        dañoGlifo: 76,
+        dañoVortice: 76,
+        dañoGolem: 76,
+        velocidadBala: 350,
+        dif: 'Difícil'
+    }
 };
+
 let armaActual = ARMAS.PISTOLA;
 let balasActuales = armaActual.balasMax;
 
+
 const BANCO_PREGUNTAS = {
+
     'Fácil': [
-        { f: 'y = (3x - 1)⁵', p1: { q: 'Deriva la potencia externa:', opciones: ['A) 5(3x-1)⁴', 'S) 5(3x-1)⁵', 'D) (3x-1)⁴'], correcta: 0 }, p2: { q: 'Deriva lo interno (3x-1):', opciones: ['A) 3x', 'S) 3', 'D) 1'], correcta: 1 } }
+        {
+            f: 'y = (3x - 1)⁵',
+
+            p1: {
+                q: 'Deriva la potencia externa:',
+                opciones: [
+                    'A) 5(3x-1)⁴',
+                    'S) 5(3x-1)⁵',
+                    'D) (3x-1)⁴'
+                ],
+                correcta: 0
+            },
+
+            p2: {
+                q: 'Deriva lo interno (3x-1):',
+                opciones: [
+                    'A) 3x',
+                    'S) 3',
+                    'D) 1'
+                ],
+                correcta: 1
+            }
+        }
     ],
+
     'Medio': [
-        { f: 'y = cos(x³)', p1: { q: 'Deriva la trigonométrica externa:', opciones: ['A) sin(x³)', 'S) -sin(x³)', 'D) -cos(x³)'], correcta: 1 }, p2: { q: 'Deriva lo interno (x³):', opciones: ['A) 3x²', 'S) 3x', 'D) x²'], correcta: 0 } }
+        {
+            f: 'y = cos(x³)',
+
+            p1: {
+                q: 'Deriva la trigonométrica externa:',
+                opciones: [
+                    'A) sin(x³)',
+                    'S) -sin(x³)',
+                    'D) -cos(x³)'
+                ],
+                correcta: 1
+            },
+
+            p2: {
+                q: 'Deriva lo interno (x³):',
+                opciones: [
+                    'A) 3x²',
+                    'S) 3x',
+                    'D) x²'
+                ],
+                correcta: 0
+            }
+        }
     ],
+
     'Difícil': [
-        { f: 'y = ln(sin(x))', p1: { q: 'Deriva el logaritmo externo:', opciones: ['A) 1/x', 'S) 1/sin(x)', 'D) cos(x)'], correcta: 1 }, p2: { q: 'Deriva lo interno (sin(x)):', opciones: ['A) cos(x)', 'S) -cos(x)', 'D) 1/cos(x)'], correcta: 0 } }
+        {
+            f: 'y = ln(sin(x))',
+
+            p1: {
+                q: 'Deriva el logaritmo externo:',
+                opciones: [
+                    'A) 1/x',
+                    'S) 1/sin(x)',
+                    'D) cos(x)'
+                ],
+                correcta: 1
+            },
+
+            p2: {
+                q: 'Deriva lo interno (sin(x)):',
+                opciones: [
+                    'A) cos(x)',
+                    'S) -cos(x)',
+                    'D) 1/cos(x)'
+                ],
+                correcta: 0
+            }
+        }
     ]
 };
+
+
 let preguntaActual = null;
 let pasoActual = 1;
 
-function preload() {}
+
+// ================================
+// PRELOAD
+// ================================
+
+function preload() {
+}
+
+
+// ================================
+// CREAR JUEGO
+// ================================
 
 function create() {
-    this.physics.world.setBounds(0, 0, 2400, 2400);
 
-    // Dibujar rejilla de fondo
+    this.physics.world.setBounds(
+        0,
+        0,
+        2400,
+        2400
+    );
+
+
+    // ============================
+    // REJILLA
+    // ============================
+
     let graphics = this.add.graphics();
-    graphics.lineStyle(1, 0x333344, 1);
+
+    graphics.lineStyle(
+        1,
+        0x333344,
+        1
+    );
+
     for (let x = 0; x < 2400; x += 80) {
+
         graphics.moveTo(x, 0);
         graphics.lineTo(x, 2400);
     }
+
     for (let y = 0; y < 2400; y += 80) {
+
         graphics.moveTo(0, y);
         graphics.lineTo(2400, y);
     }
+
     graphics.strokePath();
 
-    // Crear Jugador
-    jugador = this.add.rectangle(1200, 1200, 32, 32, 0x00ff00);
+
+    // ============================
+    // JUGADOR
+    // ============================
+
+    jugador = this.add.rectangle(
+        1200,
+        1200,
+        32,
+        32,
+        0x00ff00
+    );
+
     this.physics.add.existing(jugador);
+
     jugador.body.setCollideWorldBounds(true);
 
-    this.cameras.main.setBounds(0, 0, 2400, 2400);
-    this.cameras.main.startFollow(jugador);
+
+    // ============================
+    // CÁMARA
+    // ============================
+
+    this.cameras.main.setBounds(
+        0,
+        0,
+        2400,
+        2400
+    );
+
+    this.cameras.main.startFollow(
+        jugador
+    );
+
+
+    // ============================
+    // GRUPOS
+    // ============================
 
     enemigos = this.physics.add.group();
+
     balas = this.physics.add.group();
 
+
+    // ============================
+    // CONTROLES
+    // ============================
+
     cursores = this.input.keyboard.createCursorKeys();
-    teclado = this.input.keyboard.addKeys('UNO,DOS,TRES,A,S,D');
+
+    teclado = this.input.keyboard.addKeys(
+        'UNO,DOS,TRES,A,S,D'
+    );
+
     mouse = this.input.activePointer;
+
+
+    // ============================
+    // ENEMIGOS
+    // ============================
 
     generarEnemigos(this);
 
-    this.physics.add.overlap(balas, enemigos, impactarEnemigo, null, this);
 
-    // Interfaz UI Fija superior
-    textoUI = this.add.text(20, 20, '', { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' }).setScrollFactor(0);
+    this.physics.add.overlap(
+        balas,
+        enemigos,
+        impactarEnemigo,
+        null,
+        this
+    );
+
+
+    // ============================
+    // UI
+    // ============================
+
+    textoUI = this.add.text(
+        20,
+        20,
+        '',
+        {
+            fontSize: '18px',
+            fill: '#ffffff',
+            fontStyle: 'bold'
+        }
+    ).setScrollFactor(0);
+
     actualizarUI();
 
-    // Módulo de Recarga Matemática ordenado abajo
-    contenedorMatematicas = this.add.container(400, 480).setScrollFactor(0);
-    fondoMat = this.add.rectangle(0, 0, 720, 200, 0x0b0b14, 0.95).setStrokeStyle(3, 0xffaa00);
-    textoMatematicas = this.add.text(-340, -80, '', { fontSize: '15px', fill: '#ffffff', fontStyle: 'bold', lineSpacing: 8 });
-    contenedorMatematicas.add([fondoMat, textoMatematicas]);
+
+    // ============================
+    // MÓDULO MATEMÁTICO
+    // ============================
+
+    contenedorMatematicas =
+        this.add.container(
+            400,
+            480
+        ).setScrollFactor(0);
+
+
+    fondoMat = this.add.rectangle(
+        0,
+        0,
+        720,
+        200,
+        0x0b0b14,
+        0.95
+    );
+
+    fondoMat.setStrokeStyle(
+        3,
+        0xffaa00
+    );
+
+
+    textoMatematicas = this.add.text(
+        -340,
+        -80,
+        '',
+        {
+            fontSize: '15px',
+            fill: '#ffffff',
+            fontStyle: 'bold',
+            lineSpacing: 8,
+            wordWrap: {
+                width: 680
+            }
+        }
+    );
+
+
+    contenedorMatematicas.add([
+        fondoMat,
+        textoMatematicas
+    ]);
+
+
     contenedorMatematicas.setVisible(false);
 
-    this.time.addEvent({ delay: 1000, callback: () => { if (tiempoLimite > 0 && !juegoCongelado) tiempoLimite--; actualizarUI(); }, loop: true });
 
-    this.input.on('pointerdown', () => { disparar(this); });
+    // ============================
+    // TEMPORIZADOR
+    // ============================
+
+    this.time.addEvent({
+
+        delay: 1000,
+
+        callback: () => {
+
+            if (
+                tiempoLimite > 0 &&
+                !juegoCongelado
+            ) {
+                tiempoLimite--;
+            }
+
+            actualizarUI();
+        },
+
+        loop: true
+    });
+
+
+    // ============================
+    // DISPARO
+    // ============================
+
+    this.input.on(
+        'pointerdown',
+        () => {
+            disparar(this);
+        }
+    );
 }
 
+
+// ================================
+// UPDATE
+// ================================
+
 function update() {
+
     if (juegoCongelado) {
+
         manejarRecarga();
-        jugador.body.setVelocity(0);
-        enemigos.getChildren().forEach(e => e.body.setVelocity(0));
+
+        jugador.body.setVelocity(
+            0
+        );
+
+        enemigos.getChildren().forEach(
+            e => {
+                e.body.setVelocity(0);
+            }
+        );
+
         return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(teclado.UNO)) cambiarArma(ARMAS.PISTOLA);
-    if (Phaser.Input.Keyboard.JustDown(teclado.DOS)) cambiarArma(ARMAS.RIFLE);
-    if (Phaser.Input.Keyboard.JustDown(teclado.TRES)) cambiarArma(ARMAS.ESCOPETA);
+
+    // ============================
+    // CAMBIO DE ARMAS
+    // ============================
+
+    if (
+        Phaser.Input.Keyboard.JustDown(
+            teclado.UNO
+        )
+    ) {
+        cambiarArma(
+            ARMAS.PISTOLA
+        );
+    }
+
+
+    if (
+        Phaser.Input.Keyboard.JustDown(
+            teclado.DOS
+        )
+    ) {
+        cambiarArma(
+            ARMAS.RIFLE
+        );
+    }
+
+
+    if (
+        Phaser.Input.Keyboard.JustDown(
+            teclado.TRES
+        )
+    ) {
+        cambiarArma(
+            ARMAS.ESCOPETA
+        );
+    }
+
+
+    // ============================
+    // MOVIMIENTO
+    // ============================
 
     jugador.body.setVelocity(0);
-    let v = 300;
-    if (cursores.left.isDown) jugador.body.setVelocityX(-v);
-    else if (cursores.right.isDown) jugador.body.setVelocityX(v);
-    if (cursores.up.isDown) jugador.body.setVelocityY(-v);
-    else if (cursores.down.isDown) jugador.body.setVelocityY(v);
 
-    enemigos.getChildren().forEach(enemigo => {
-        if (enemigo.tipo === 'Glifo') {
-            this.physics.moveToObject(enemigo, jugador, 160);
-        } else if (enemigo.tipo === 'Golem') {
-            this.physics.moveToObject(enemigo, jugador, 50);
-        } else if (enemigo.tipo === 'Vortice') {
-            let dist = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, jugador.x, jugador.y);
-            if (dist > 350) this.physics.moveToObject(enemigo, jugador, 80);
-            else enemigo.body.setVelocity(0);
+    let v = 300;
+
+
+    if (cursores.left.isDown) {
+
+        jugador.body.setVelocityX(-v);
+
+    } else if (cursores.right.isDown) {
+
+        jugador.body.setVelocityX(v);
+    }
+
+
+    if (cursores.up.isDown) {
+
+        jugador.body.setVelocityY(-v);
+
+    } else if (cursores.down.isDown) {
+
+        jugador.body.setVelocityY(v);
+    }
+
+
+    // ============================
+    // MOVIMIENTO ENEMIGOS
+    // ============================
+
+    enemigos.getChildren().forEach(
+        enemigo => {
+
+            if (
+                enemigo.tipo === 'Glifo'
+            ) {
+
+                this.physics.moveToObject(
+                    enemigo,
+                    jugador,
+                    160
+                );
+
+            } else if (
+                enemigo.tipo === 'Golem'
+            ) {
+
+                this.physics.moveToObject(
+                    enemigo,
+                    jugador,
+                    50
+                );
+
+            } else if (
+                enemigo.tipo === 'Vortice'
+            ) {
+
+                let dist =
+                    Phaser.Math.Distance.Between(
+                        enemigo.x,
+                        enemigo.y,
+                        jugador.x,
+                        jugador.y
+                    );
+
+
+                if (dist > 350) {
+
+                    this.physics.moveToObject(
+                        enemigo,
+                        jugador,
+                        80
+                    );
+
+                } else {
+
+                    enemigo.body.setVelocity(0);
+                }
+            }
         }
-    });
+    );
 }
+
+
+// ================================
+// GENERAR ENEMIGOS
+// ================================
 
 function generarEnemigos(escena) {
-    for (let i = 0; i < 25; i++) crearEnemigo(escena, 'Glifo', 0x00ffff, 20);
-    for (let i = 0; i < 15; i++) crearEnemigo(escena, 'Vortice', 0xff00ff, 20);
-    for (let i = 0; i < 10; i++) crearEnemigo(escena, 'Golem', 0xff5500, 150);
+
+    for (
+        let i = 0;
+        i < 25;
+        i++
+    ) {
+
+        crearEnemigo(
+            escena,
+            'Glifo',
+            0x00ffff,
+            20
+        );
+    }
+
+
+    for (
+        let i = 0;
+        i < 15;
+        i++
+    ) {
+
+        crearEnemigo(
+            escena,
+            'Vortice',
+            0xff00ff,
+            20
+        );
+    }
+
+
+    for (
+        let i = 0;
+        i < 10;
+        i++
+    ) {
+
+        crearEnemigo(
+            escena,
+            'Golem',
+            0xff5500,
+            150
+        );
+    }
 }
 
-function crearEnemigo(escena, tipo, color, hp) {
-    let x = Phaser.Math.Between(100, 2300);
-    let y = Phaser.Math.Between(100, 2300);
-    if (Phaser.Math.Distance.Between(x, y, 1200, 1200) < 300) { x += 500; y += 500; }
-    
-    let size = tipo === 'Golem' ? 48 : 24;
-    let e = escena.add.rectangle(x, y, size, size, color);
+
+// ================================
+// CREAR ENEMIGO
+// ================================
+
+function crearEnemigo(
+    escena,
+    tipo,
+    color,
+    hp
+) {
+
+    let x =
+        Phaser.Math.Between(
+            100,
+            2300
+        );
+
+    let y =
+        Phaser.Math.Between(
+            100,
+            2300
+        );
+
+
+    if (
+        Phaser.Math.Distance.Between(
+            x,
+            y,
+            1200,
+            1200
+        ) < 300
+    ) {
+
+        x += 500;
+        y += 500;
+    }
+
+
+    let size =
+        tipo === 'Golem'
+            ? 48
+            : 24;
+
+
+    let e =
+        escena.add.rectangle(
+            x,
+            y,
+            size,
+            size,
+            color
+        );
+
+
     escena.physics.add.existing(e);
+
+
     e.tipo = tipo;
     e.hp = hp;
+
+
     enemigos.add(e);
 }
 
+
+// ================================
+// DISPARAR
+// ================================
+
 function disparar(escena) {
-    if (juegoCongelado) return;
-    if (balasActuales <= 0) {
-        iniciarRecarga();
+
+    if (juegoCongelado) {
         return;
     }
 
+
+    if (balasActuales <= 0) {
+
+        iniciarRecarga();
+
+        return;
+    }
+
+
     balasActuales--;
+
     actualizarUI();
 
-    let bala = escena.add.circle(jugador.x, jugador.y, 6, 0xffff00);
+
+    let bala =
+        escena.add.circle(
+            jugador.x,
+            jugador.y,
+            6,
+            0xffff00
+        );
+
+
     escena.physics.add.existing(bala);
+
     balas.add(bala);
 
-    let angulo = Phaser.Math.Angle.Between(jugador.x, jugador.y, escena.cameras.main.scrollX + mouse.x, escena.cameras.main.scrollY + mouse.y);
-    escena.physics.velocityFromRotation(angulo, armaActual.velocidadBala, bala.body.velocity);
+
+    let angulo =
+        Phaser.Math.Angle.Between(
+            jugador.x,
+            jugador.y,
+            escena.cameras.main.scrollX +
+                mouse.x,
+            escena.cameras.main.scrollY +
+                mouse.y
+        );
+
+
+    escena.physics.velocityFromRotation(
+        angulo,
+        armaActual.velocidadBala,
+        bala.body.velocity
+    );
 }
 
-function impactarEnemigo(bala, enemigo) {
+
+// ================================
+// IMPACTO
+// ================================
+
+function impactarEnemigo(
+    bala,
+    enemigo
+) {
+
     bala.destroy();
+
+
     let daño = 0;
-    if (enemigo.tipo === 'Glifo') daño = armaActual.dañoGlifo;
-    if (enemigo.tipo === 'Vortice') daño = armaActual.dañoVortice;
-    if (enemigo.tipo === 'Golem') daño = armaActual.dañoGolem;
+
+
+    if (
+        enemigo.tipo === 'Glifo'
+    ) {
+        daño =
+            armaActual.dañoGlifo;
+    }
+
+
+    if (
+        enemigo.tipo === 'Vortice'
+    ) {
+        daño =
+            armaActual.dañoVortice;
+    }
+
+
+    if (
+        enemigo.tipo === 'Golem'
+    ) {
+        daño =
+            armaActual.dañoGolem;
+    }
+
 
     enemigo.hp -= daño;
-    if (enemigo.hp <= 0) enemigo.destroy();
+
+
+    if (enemigo.hp <= 0) {
+
+        enemigo.destroy();
+    }
 }
 
-function cambiarArma(nuevaArma) {
+
+// ================================
+// CAMBIAR ARMA
+// ================================
+
+function cambiarArma(
+    nuevaArma
+) {
+
     armaActual = nuevaArma;
-    balasActuales = armaActual.balasMax;
+
+    balasActuales =
+        armaActual.balasMax;
+
     actualizarUI();
 }
 
+
+// ================================
+// ACTUALIZAR UI
+// ================================
+
 function actualizarUI() {
-    let min = Math.floor(tiempoLimite / 60);
-    let seg = tiempoLimite % 60;
-    seg = seg < 10 ? '0' + seg : seg;
-    
+
+    let min =
+        Math.floor(
+            tiempoLimite / 60
+        );
+
+
+    let seg =
+        tiempoLimite % 60;
+
+
+    seg =
+        seg < 10
+            ? '0' + seg
+            : seg;
+
+
     textoUI.setText(
+
         `⏱️ TIEMPO RESTANTE: ${min}:${seg}\n` +
+
         `💥 ARMA EQUIPADA: ${armaActual.nombre.toUpperCase()} (Dificultad: ${armaActual.dif})\n` +
+
         `⚡ MUNICIÓN: ${balasActuales} / ${armaActual.balasMax}\n\n` +
+
         `[Controles]: Flechas Teclado = Moverse | Click Izquierdo = Disparar\n` +
+
         `[Teclas 1, 2, 3]: Alternar Arsenal`
     );
 }
 
+
+// ================================
+// INICIAR RECARGA
+// ================================
+
 function iniciarRecarga() {
+
     juegoCongelado = true;
+
     pasoActual = 1;
-    
-    let lista = BANCO_PREGUNTAS[armaActual.dif];
-    preguntaActual = lista[Phaser.Math.Between(0, lista.length - 1)];
-    
-    contenedorMatematicas.setVisible(true);
+
+
+    let lista =
+        BANCO_PREGUNTAS[
+            armaActual.dif
+        ];
+
+
+    preguntaActual =
+        lista[
+            Phaser.Math.Between(
+                0,
+                lista.length - 1
+            )
+        ];
+
+
+    contenedorMatematicas.setVisible(
+        true
+    );
+
+
     mostrarPaso();
 }
 
+
+// ================================
+// MOSTRAR PREGUNTA
+// ================================
+
 function mostrarPaso() {
-    let paso = pasoActual === 1 ? preguntaActual.p1 : preguntaActual.p2;
-    // FIJADO E INSPECCIONADO: Opciones mapeadas de forma 100% individual y segura
+
+    let paso =
+        pasoActual === 1
+            ? preguntaActual.p1
+            : preguntaActual.p2;
+
+
     textoMatematicas.setText(
-        `⚠️ MÓDULO DE DERIVACIÓN REQUERIDO (REGLA DE LA CADENA)\n` +
-        `Función actual:  ${preguntaActual.f}\n\n` +
-        `PASO ${pasoActual}: ${paso.q}\n` +
+
+        `⚠️ MÓDULO DE DERIVACIÓN REQUERIDO (REGLA DE LA CADENA)\n\n` +
+
+        `Función actual: ${preguntaActual.f}\n\n` +
+
+        `PASO ${pasoActual}: ${paso.q}\n\n` +
+
         `Presiona la tecla correspondiente:\n\n` +
+
         `👉 ${paso.opciones[0]}       👉 ${paso.opciones[1]}       👉 ${paso.opciones[2]}`
     );
 }
 
+
+// ================================
+// MANEJAR RECARGA
+// ================================
+
 function manejarRecarga() {
-    let paso = pasoActual === 1 ? preguntaActual.p1 : preguntaActual.p2;
+
+    let paso =
+        pasoActual === 1
+            ? preguntaActual.p1
+            : preguntaActual.p2;
+
+
     let seleccion = -1;
 
-    if (Phaser.Input.Keyboard.JustDown(teclado.A)) seleccion = 0;
-    if (Phaser.Input.Keyboard.JustDown(teclado.S)) seleccion = 1;
-    if (Phaser.Input.Keyboard.JustDown(teclado.D)) seleccion = 2;
+
+    if (
+        Phaser.Input.Keyboard.JustDown(
+            teclado.A
+        )
+    ) {
+        seleccion = 0;
+    }
+
+
+    if (
+        Phaser.Input.Keyboard.JustDown(
+            teclado.S
+        )
+    ) {
+        seleccion = 1;
+    }
+
+
+    if (
+        Phaser.Input.Keyboard.JustDown(
+            teclado.D
+        )
+    ) {
+        seleccion = 2;
+    }
+
 
     if (seleccion !== -1) {
-        if (seleccion === paso.correcta) {
+
+        if (
+            seleccion === paso.correcta
+        ) {
+
             if (pasoActual === 1) {
+
                 pasoActual = 2;
+
                 mostrarPaso();
+
             } else {
-                balasActuales = armaActual.balasMax;
+
+                balasActuales =
+                    armaActual.balasMax;
+
                 juegoCongelado = false;
-                contenedorMatematicas.setVisible(false);
+
+                contenedorMatematicas.setVisible(
+                    false
+                );
+
                 actualizarUI();
             }
+
         } else {
-            fondoMat.setStrokeStyle(3, 0xff0000);
-            setTimeout(() => { fondoMat.setStrokeStyle(3, 0xffaa00); }, 300);
+
+            fondoMat.setStrokeStyle(
+                3,
+                0xff0000
+            );
+
+
+            setTimeout(() => {
+
+                fondoMat.setStrokeStyle(
+                    3,
+                    0xffaa00
+                );
+
+            }, 300);
         }
     }
 }
 </script>
+
 </body>
 </html>
