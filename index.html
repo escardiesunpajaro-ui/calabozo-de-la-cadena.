@@ -8,7 +8,6 @@
 
 ```
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-```
 
 <style>
     body {
@@ -32,6 +31,7 @@
         display: block;
     }
 </style>
+```
 
 </head>
 
@@ -287,6 +287,9 @@ function preload() {
 function create() {
 
     escenaJuego = this;
+
+    // Phaser prioriza el objeto interactivo superior
+    this.input.setTopOnly(true);
 
 
     // ==================================================
@@ -739,10 +742,6 @@ function update() {
                 }
 
 
-                // ==========================================
-                // ATAQUE DEL VÓRTICE
-                // ==========================================
-
                 if (
                     !enemigo.ultimoDisparo ||
                     this.time.now - enemigo.ultimoDisparo >= 2000
@@ -785,7 +784,8 @@ function crearMenuPrincipal(escena) {
             600,
             0x080810,
             0.97
-        );
+        )
+        .setScrollFactor(0);
 
 
     let titulo =
@@ -801,7 +801,8 @@ function crearMenuPrincipal(escena) {
                 strokeThickness: 8
             }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setScrollFactor(0);
 
 
     let subtitulo =
@@ -815,7 +816,8 @@ function crearMenuPrincipal(escena) {
                 fontStyle: 'bold'
             }
         )
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setScrollFactor(0);
 
 
     let botonJugar =
@@ -883,37 +885,88 @@ function crearBoton(
     accion
 ) {
 
+    // Contenedor individual del botón
     let boton =
-        escena.add.text(
+        escena.add.container(
             x,
-            y,
+            y
+        )
+        .setScrollFactor(0)
+        .setDepth(101);
+
+
+    // Zona REAL de clic
+    let fondoBoton =
+        escena.add.rectangle(
+            0,
+            0,
+            300,
+            60,
+            0x252538,
+            1
+        )
+        .setOrigin(0.5);
+
+
+    // Texto
+    let textoBoton =
+        escena.add.text(
+            0,
+            0,
             texto,
             {
                 fontSize: '25px',
                 fill: '#ffffff',
-                fontStyle: 'bold',
-                backgroundColor: '#252538',
-                padding: {
-                    left: 30,
-                    right: 30,
-                    top: 12,
-                    bottom: 12
-                }
+                fontStyle: 'bold'
             }
         )
-        .setOrigin(0.5)
-        .setInteractive({
-            useHandCursor: true
-        });
+        .setOrigin(0.5);
 
+
+    boton.add([
+        fondoBoton,
+        textoBoton
+    ]);
+
+
+    // ==================================================
+    // ZONA INTERACTIVA
+    // ==================================================
+
+    boton.setSize(
+        300,
+        60
+    );
+
+
+    boton.setInteractive(
+        new Phaser.Geom.Rectangle(
+            -150,
+            -30,
+            300,
+            60
+        ),
+        Phaser.Geom.Rectangle.Contains
+    );
+
+
+    boton.input.cursor = 'pointer';
+
+
+    // ==================================================
+    // HOVER
+    // ==================================================
 
     boton.on(
         'pointerover',
         () => {
 
-            boton.setStyle({
-                fill: '#ffff00',
-                backgroundColor: '#383850'
+            fondoBoton.setFillStyle(
+                0x383850
+            );
+
+            textoBoton.setStyle({
+                fill: '#ffff00'
             });
 
         }
@@ -924,18 +977,38 @@ function crearBoton(
         'pointerout',
         () => {
 
-            boton.setStyle({
-                fill: '#ffffff',
-                backgroundColor: '#252538'
+            fondoBoton.setFillStyle(
+                0x252538
+            );
+
+            textoBoton.setStyle({
+                fill: '#ffffff'
             });
 
         }
     );
 
 
+    // ==================================================
+    // CLICK
+    // ==================================================
+
     boton.on(
         'pointerdown',
-        accion
+        (
+            pointer,
+            localX,
+            localY,
+            event
+        ) => {
+
+            if (event) {
+                event.stopPropagation();
+            }
+
+            accion();
+
+        }
     );
 
 
@@ -973,7 +1046,6 @@ function iniciarPartida() {
     jugador.setAlpha(1);
 
 
-    // Eliminar cualquier enemigo anterior
     enemigos.clear(
         true,
         true
@@ -1210,37 +1282,24 @@ function iniciarRonda(escena) {
     let cantidadGolems = 0;
 
 
-    // RONDA 1
     if (rondaActual === 1) {
 
         cantidadGlifos = 5;
-    }
 
-
-    // RONDA 2
-    else if (rondaActual === 2) {
+    } else if (rondaActual === 2) {
 
         cantidadVortices = 4;
-    }
 
-
-    // RONDA 3
-    else if (rondaActual === 3) {
+    } else if (rondaActual === 3) {
 
         cantidadGlifos = 6;
         cantidadVortices = 4;
-    }
 
-
-    // RONDA 4
-    else if (rondaActual === 4) {
+    } else if (rondaActual === 4) {
 
         cantidadGolems = 3;
-    }
 
-
-    // RONDA 5 EN ADELANTE
-    else {
+    } else {
 
         let aumento =
             rondaActual - 5;
@@ -1259,7 +1318,6 @@ function iniciarRonda(escena) {
     }
 
 
-    // GLIFOS
     for (
         let i = 0;
         i < cantidadGlifos;
@@ -1275,7 +1333,6 @@ function iniciarRonda(escena) {
     }
 
 
-    // VÓRTICES
     for (
         let i = 0;
         i < cantidadVortices;
@@ -1291,7 +1348,6 @@ function iniciarRonda(escena) {
     }
 
 
-    // GOLEMS
     for (
         let i = 0;
         i < cantidadGolems;
