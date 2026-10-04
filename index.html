@@ -28,8 +28,6 @@ body{
 
 canvas{
     display:block;
-    width:100%;
-    height:100%;
     touch-action:none;
 }
 </style>
@@ -335,6 +333,8 @@ actualizarHUD();
 });
 
 
+/* RESPONSIVE */
+
 this.scale.on(
 "resize",
 redimensionarInterfaz,
@@ -539,10 +539,17 @@ if(!escenaPrincipal)return;
 const ancho=escenaPrincipal.scale.width;
 const alto=escenaPrincipal.scale.height;
 
-const escala=Phaser.Math.Clamp(
+
+/*
+    El HUD mantiene su tamaño legible.
+    Solo cambia su posición según el tamaño
+    disponible de la pantalla.
+*/
+
+const escalaHUD=Phaser.Math.Clamp(
 Math.min(ancho/800,alto/600),
-0.75,
-1.5
+0.8,
+1.25
 );
 
 
@@ -553,13 +560,30 @@ textoArma,
 textoMunicion,
 textoEnemigos
 ].forEach(t=>{
-if(t)t.setScale(escala);
+
+if(t){
+
+t.setScale(escalaHUD);
+
+t.setPosition(
+20,
+20 + [
+textoVida,
+textoTiempo,
+textoArma,
+textoMunicion,
+textoEnemigos
+].indexOf(t)*30
+);
+
+}
+
 });
 
 
 if(textoRonda){
 
-textoRonda.setScale(escala);
+textoRonda.setScale(escalaHUD);
 
 textoRonda.setPosition(
 ancho-20,
@@ -578,6 +602,14 @@ escenaPrincipal.textoControles.setPosition(
 alto-20
 );
 
+escenaPrincipal.textoControles.setScale(
+Phaser.Math.Clamp(
+Math.min(ancho/800,alto/600),
+0.8,
+1.25
+)
+);
+
 }
 
 
@@ -587,6 +619,14 @@ menuPrincipal.setPosition(
 ancho/2,
 alto/2
 );
+
+const escalaMenu=Phaser.Math.Clamp(
+Math.min(ancho/800,alto/600),
+0.7,
+1
+);
+
+menuPrincipal.setScale(escalaMenu);
 
 }
 
@@ -598,13 +638,21 @@ ancho/2,
 alto/2
 );
 
+const escalaOverlay=Phaser.Math.Clamp(
+Math.min(ancho/800,alto/600),
+0.7,
+1
+);
+
+overlayActual.setScale(escalaOverlay);
+
 }
 
 }
 
 
 /* =========================
-   DISPARO CORREGIDO
+   DISPARO
 ========================= */
 
 function disparar(pointer){
@@ -637,7 +685,7 @@ mundoY
 );
 
 
-/* CREAR PROYECTIL */
+/* PROYECTIL */
 
 const bala=escenaPrincipal.add.circle(
 jugador.x,
@@ -646,45 +694,29 @@ jugador.y,
 0xffff00
 );
 
+escenaPrincipal.physics.add.existing(bala);
 
-/* CREAR CUERPO FÍSICO */
 
-escenaPrincipal.physics.add.existing(
-bala
+/*
+    Se mantiene el sistema de movimiento original:
+    setVelocity() de Arcade Physics.
+*/
+
+bala.body.setVelocity(
+Math.cos(angulo)*
+ARMAS[armaActual].velocidad,
+Math.sin(angulo)*
+ARMAS[armaActual].velocidad
 );
 
-
-/* ASEGURAR CUERPO DINÁMICO */
-
-bala.body.enable=true;
-bala.body.moves=true;
-bala.body.allowGravity=false;
-
-
-/* VELOCIDAD */
-
-bala.body.velocity.x=
-Math.cos(angulo)*
-ARMAS[armaActual].velocidad;
-
-bala.body.velocity.y=
-Math.sin(angulo)*
-ARMAS[armaActual].velocidad;
-
-
-/* DAÑO */
 
 bala.dano=ARMAS[armaActual].danoGlifo;
 bala.danoVortice=ARMAS[armaActual].danoVortice;
 bala.danoGolem=ARMAS[armaActual].danoGolem;
 
 
-/* AÑADIR AL GRUPO */
-
 proyectiles.add(bala);
 
-
-/* VIDA DEL PROYECTIL */
 
 escenaPrincipal.time.delayedCall(
 5000,
@@ -872,26 +904,22 @@ enemigo.y,
 0xff00ff
 );
 
+escenaPrincipal.physics.add.existing(bala);
 
-escenaPrincipal.physics.add.existing(
-bala
+
+/*
+    Igual que el disparo del jugador:
+    Arcade Physics controla directamente
+    la velocidad del proyectil.
+*/
+
+bala.body.setVelocity(
+Math.cos(angulo)*220,
+Math.sin(angulo)*220
 );
 
 
-bala.body.enable=true;
-bala.body.moves=true;
-bala.body.allowGravity=false;
-
-
-bala.body.velocity.x=
-Math.cos(angulo)*220;
-
-bala.body.velocity.y=
-Math.sin(angulo)*220;
-
-
 bala.dano=10;
-
 
 proyectilesEnemigos.add(bala);
 
@@ -1477,6 +1505,8 @@ escenaPrincipal.textoControles.setScrollFactor(0);
 escenaPrincipal.textoControles.setDepth(200);
 escenaPrincipal.textoControles.setOrigin(0,1);
 
+redimensionarInterfaz();
+
 }
 
 
@@ -1606,6 +1636,8 @@ redimensionarInterfaz();
 )
 );
 
+redimensionarInterfaz();
+
 }
 
 
@@ -1669,6 +1701,8 @@ informacion.setOrigin(.5);
 overlayActual.add(fondo);
 overlayActual.add(titulo);
 overlayActual.add(informacion);
+
+redimensionarInterfaz();
 
 }
 
