@@ -535,10 +535,6 @@ function create() {
     );
 
 
-    // --------------------------------------------------
-    // TÍTULO
-    // --------------------------------------------------
-
     textoTituloMat =
         this.add.text(
             -350,
@@ -552,10 +548,6 @@ function create() {
         );
 
 
-    // --------------------------------------------------
-    // FUNCIÓN
-    // --------------------------------------------------
-
     textoFuncionMat =
         this.add.text(
             -350,
@@ -568,10 +560,6 @@ function create() {
             }
         );
 
-
-    // --------------------------------------------------
-    // PREGUNTA
-    // --------------------------------------------------
 
     textoPreguntaMat =
         this.add.text(
@@ -589,10 +577,6 @@ function create() {
         );
 
 
-    // --------------------------------------------------
-    // RESPUESTA 1
-    // --------------------------------------------------
-
     textoRespuesta1 =
         this.add.text(
             -325,
@@ -605,10 +589,6 @@ function create() {
             }
         );
 
-
-    // --------------------------------------------------
-    // RESPUESTA 2
-    // --------------------------------------------------
 
     textoRespuesta2 =
         this.add.text(
@@ -623,10 +603,6 @@ function create() {
         );
 
 
-    // --------------------------------------------------
-    // RESPUESTA 3
-    // --------------------------------------------------
-
     textoRespuesta3 =
         this.add.text(
             -325,
@@ -639,10 +615,6 @@ function create() {
             }
         );
 
-
-    // --------------------------------------------------
-    // AYUDA
-    // --------------------------------------------------
 
     textoAyudaMat =
         this.add.text(
@@ -726,14 +698,13 @@ function create() {
     );
 
 
-    redimensionarInterfaz();
-
-
     // ==================================================
-    // MENÚ
+    // MENÚ PRINCIPAL
     // ==================================================
 
     crearMenuPrincipal(this);
+
+    redimensionarInterfaz();
 }
 
 
@@ -746,6 +717,7 @@ function redimensionarInterfaz() {
     if (!escenaJuego) {
         return;
     }
+
 
     let ancho =
         escenaJuego.scale.width;
@@ -762,6 +734,78 @@ function redimensionarInterfaz() {
 
         textoRonda.x =
             ancho - 20;
+    }
+
+
+    // ==================================================
+    // MENÚ PRINCIPAL
+    // ==================================================
+
+    if (menuPrincipal) {
+
+        menuPrincipal.setPosition(
+            ancho / 2,
+            alto / 2
+        );
+
+        let fondoMenu =
+            menuPrincipal.getAt(0);
+
+        if (fondoMenu) {
+
+            fondoMenu.setSize(
+                ancho,
+                alto
+            );
+        }
+    }
+
+
+    // ==================================================
+    // MENÚ CONTROLES
+    // ==================================================
+
+    if (menuControles) {
+
+        menuControles.setPosition(
+            ancho / 2,
+            alto / 2
+        );
+
+        let fondoControles =
+            menuControles.getAt(0);
+
+        if (fondoControles) {
+
+            fondoControles.setSize(
+                ancho,
+                alto
+            );
+        }
+    }
+
+
+    // ==================================================
+    // MENÚ CRÉDITOS
+    // ==================================================
+
+    if (menuCreditos) {
+
+        menuCreditos.setPosition(
+            ancho / 2,
+            alto / 2
+        );
+
+        let fondoCreditos =
+            menuCreditos.getAt(0);
+
+        if (fondoCreditos) {
+
+            fondoCreditos.setSize(
+                ancho,
+                alto
+            );
+        }
     }
 
 
@@ -799,13 +843,16 @@ function redimensionarInterfaz() {
             y
         );
 
+
         fondoMat.setSize(
             panelAncho,
             panelAlto
         );
 
+
         let margen =
             -panelAncho / 2 + 20;
+
 
         textoTituloMat.x =
             margen;
@@ -827,6 +874,7 @@ function redimensionarInterfaz() {
 
         textoAyudaMat.x =
             margen;
+
 
         textoPreguntaMat.setWordWrapWidth(
             panelAncho - 40
@@ -1032,8 +1080,8 @@ function crearMenuPrincipal(escena) {
 
     menuPrincipal =
         escena.add.container(
-            400,
-            300
+            escena.scale.width / 2,
+            escena.scale.height / 2
         )
         .setScrollFactor(0)
         .setDepth(100);
@@ -1043,8 +1091,8 @@ function crearMenuPrincipal(escena) {
         escena.add.rectangle(
             0,
             0,
-            800,
-            600,
+            escena.scale.width,
+            escena.scale.height,
             0x080810,
             0.97
         );
@@ -1326,8 +1374,8 @@ function mostrarControles() {
 
     menuControles =
         escenaJuego.add.container(
-            400,
-            300
+            escenaJuego.scale.width / 2,
+            escenaJuego.scale.height / 2
         )
         .setScrollFactor(0)
         .setDepth(110);
@@ -1337,8 +1385,8 @@ function mostrarControles() {
         escenaJuego.add.rectangle(
             0,
             0,
-            800,
-            600,
+            escenaJuego.scale.width,
+            escenaJuego.scale.height,
             0x080810,
             0.98
         );
@@ -1419,6 +1467,9 @@ function mostrarControles() {
         controles,
         volver
     ]);
+
+
+    redimensionarInterfaz();
 }
 
 
@@ -1432,8 +1483,8 @@ function mostrarCreditos() {
 
     menuCreditos =
         escenaJuego.add.container(
-            400,
-            300
+            escenaJuego.scale.width / 2,
+            escenaJuego.scale.height / 2
         )
         .setScrollFactor(0)
         .setDepth(110);
@@ -1443,8 +1494,8 @@ function mostrarCreditos() {
         escenaJuego.add.rectangle(
             0,
             0,
-            800,
-            600,
+            escenaJuego.scale.width,
+            escenaJuego.scale.height,
             0x080810,
             0.98
         );
@@ -1512,6 +1563,9 @@ function mostrarCreditos() {
         texto,
         volver
     ]);
+
+
+    redimensionarInterfaz();
 }
 
 
@@ -1819,10 +1873,6 @@ function disparar(escena) {
         bala
     );
 
-
-    // ==================================================
-    // DIRECCIÓN DEL PROYECTIL
-    // ==================================================
 
     const puntoMundo =
         escena.cameras.main.getWorldPoint(
@@ -2315,10 +2365,6 @@ function mostrarPaso() {
             : preguntaActual.p2;
 
 
-    // ==================================================
-    // CADA ELEMENTO SE COLOCA POR SEPARADO
-    // ==================================================
-
     textoTituloMat.setText(
         '⚠️ MÓDULO DE DERIVACIÓN REQUERIDO'
     );
@@ -2354,7 +2400,6 @@ function mostrarPaso() {
     );
 
 
-    // Restaurar posición/estilo de respuestas
     textoRespuesta1.setFill('#ffffff');
     textoRespuesta2.setFill('#ffffff');
     textoRespuesta3.setFill('#ffffff');
