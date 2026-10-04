@@ -7,7 +7,8 @@
 <title>Calabozo de la Cadena</title>
 
 <style>
-html,body{
+html,
+body{
     width:100%;
     height:100%;
     margin:0;
@@ -37,6 +38,7 @@ canvas{
 </head>
 
 <body>
+
 <div id="canvas-container"></div>
 
 <script>
@@ -82,6 +84,10 @@ let menuPrincipal;
 let overlayActual=null;
 
 
+/* =========================
+   ARMAS
+========================= */
+
 const ARMAS={
 
 PISTOLA:{
@@ -114,6 +120,10 @@ dificultad:"Difícil"
 };
 
 
+/* =========================
+   PREGUNTAS
+========================= */
+
 const BANCO_PREGUNTAS={
 
 Fácil:[
@@ -128,7 +138,11 @@ correcta:0
 },
 {
 pregunta:"En y = (3x - 1)⁵,\n¿cuál es la derivada interna?",
-opciones:["3x","3","1"],
+opciones:[
+"3x",
+"3",
+"1"
+],
 correcta:1
 }
 ],
@@ -136,12 +150,20 @@ correcta:1
 Medio:[
 {
 pregunta:"y = cos(x³)\n¿Cuál es la derivada externa?",
-opciones:["sin(x³)","-sin(x³)","-cos(x³)"],
+opciones:[
+"sin(x³)",
+"-sin(x³)",
+"-cos(x³)"
+],
 correcta:1
 },
 {
 pregunta:"y = cos(x³)\n¿Cuál es la derivada interna?",
-opciones:["3x²","3x","x²"],
+opciones:[
+"3x²",
+"3x",
+"x²"
+],
 correcta:0
 }
 ],
@@ -149,18 +171,30 @@ correcta:0
 Difícil:[
 {
 pregunta:"y = ln(sin(x))\n¿Cuál es la derivada externa?",
-opciones:["1/x","1/sin(x)","cos(x)"],
+opciones:[
+"1/x",
+"1/sin(x)",
+"cos(x)"
+],
 correcta:1
 },
 {
 pregunta:"y = ln(sin(x))\n¿Cuál es la derivada interna?",
-opciones:["cos(x)","-cos(x)","1/cos(x)"],
+opciones:[
+"cos(x)",
+"-cos(x)",
+"1/cos(x)"
+],
 correcta:0
 }
 ]
 
 };
 
+
+/* =========================
+   CONFIGURACIÓN
+========================= */
 
 const config={
 
@@ -171,25 +205,26 @@ parent:"canvas-container",
 backgroundColor:"#1a1a24",
 
 scale:{
-mode:Phaser.Scale.RESIZE,
-autoCenter:Phaser.Scale.CENTER_BOTH
+    mode:Phaser.Scale.RESIZE,
+    autoCenter:Phaser.Scale.CENTER_BOTH
 },
 
 physics:{
-default:"arcade",
-arcade:{
-gravity:{y:0},
-debug:false
-}
+    default:"arcade",
+    arcade:{
+        gravity:{
+            y:0
+        },
+        debug:false
+    }
 },
 
 scene:{
-create:crear,
-update:actualizar
+    create:crear,
+    update:actualizar
 }
 
 };
-
 
 new Phaser.Game(config);
 
@@ -202,8 +237,14 @@ function crear(){
 
 escenaPrincipal=this;
 
+
+/* MUNDO */
+
 this.physics.world.setBounds(
-0,0,ANCHO_MUNDO,ALTO_MUNDO
+0,
+0,
+ANCHO_MUNDO,
+ALTO_MUNDO
 );
 
 
@@ -211,41 +252,84 @@ this.physics.world.setBounds(
 
 const graphics=this.add.graphics();
 
-graphics.lineStyle(1,0x292936,1);
+graphics.lineStyle(
+1,
+0x292936,
+1
+);
 
-for(let x=0;x<=ANCHO_MUNDO;x+=80)
-graphics.lineBetween(x,0,x,ALTO_MUNDO);
+for(
+let x=0;
+x<=ANCHO_MUNDO;
+x+=80
+){
 
-for(let y=0;y<=ALTO_MUNDO;y+=80)
-graphics.lineBetween(0,y,ANCHO_MUNDO,y);
+graphics.lineBetween(
+x,
+0,
+x,
+ALTO_MUNDO
+);
+
+}
+
+for(
+let y=0;
+y<=ALTO_MUNDO;
+y+=80
+){
+
+graphics.lineBetween(
+0,
+y,
+ANCHO_MUNDO,
+y
+);
+
+}
 
 
 /* JUGADOR */
 
 jugador=this.add.rectangle(
-1200,1200,32,32,0x00ff66
+1200,
+1200,
+32,
+32,
+0x00ff66
 );
 
-this.physics.add.existing(jugador);
+this.physics.add.existing(
+jugador
+);
 
-jugador.body.setCollideWorldBounds(true);
+jugador.body.setCollideWorldBounds(
+true
+);
 
 
 /* GRUPOS */
 
 enemigos=this.physics.add.group();
+
 proyectiles=this.physics.add.group();
-proyectilesEnemigos=this.physics.add.group();
+
+proyectilesEnemigos=
+this.physics.add.group();
 
 
 /* CÁMARA */
 
 this.cameras.main.setBounds(
-0,0,ANCHO_MUNDO,ALTO_MUNDO
+0,
+0,
+ANCHO_MUNDO,
+ALTO_MUNDO
 );
 
 this.cameras.main.startFollow(
-jugador,true
+jugador,
+true
 );
 
 
@@ -253,21 +337,40 @@ jugador,true
 
 teclado=this.input.keyboard.addKeys({
 
-ARRIBA:Phaser.Input.Keyboard.KeyCodes.W,
-ABAJO:Phaser.Input.Keyboard.KeyCodes.S,
-IZQUIERDA:Phaser.Input.Keyboard.KeyCodes.A,
-DERECHA:Phaser.Input.Keyboard.KeyCodes.D,
+ARRIBA:
+Phaser.Input.Keyboard.KeyCodes.W,
 
-UNO:Phaser.Input.Keyboard.KeyCodes.ONE,
-DOS:Phaser.Input.Keyboard.KeyCodes.TWO,
-TRES:Phaser.Input.Keyboard.KeyCodes.THREE,
+ABAJO:
+Phaser.Input.Keyboard.KeyCodes.S,
 
-Z:Phaser.Input.Keyboard.KeyCodes.Z,
-X:Phaser.Input.Keyboard.KeyCodes.X,
-C:Phaser.Input.Keyboard.KeyCodes.C
+IZQUIERDA:
+Phaser.Input.Keyboard.KeyCodes.A,
+
+DERECHA:
+Phaser.Input.Keyboard.KeyCodes.D,
+
+UNO:
+Phaser.Input.Keyboard.KeyCodes.ONE,
+
+DOS:
+Phaser.Input.Keyboard.KeyCodes.TWO,
+
+TRES:
+Phaser.Input.Keyboard.KeyCodes.THREE,
+
+Z:
+Phaser.Input.Keyboard.KeyCodes.Z,
+
+X:
+Phaser.Input.Keyboard.KeyCodes.X,
+
+C:
+Phaser.Input.Keyboard.KeyCodes.C
 
 });
 
+
+/* HUD */
 
 crearHUD(this);
 
@@ -308,11 +411,12 @@ this
 );
 
 
-/* TIEMPO */
+/* TEMPORIZADOR */
 
 contadorTiempo=this.time.addEvent({
 
 delay:1000,
+
 loop:true,
 
 callback:()=>{
@@ -324,6 +428,7 @@ tiempoRestante>0
 ){
 
 tiempoRestante--;
+
 actualizarHUD();
 
 }
@@ -341,9 +446,16 @@ redimensionarInterfaz,
 this
 );
 
-this.input.setTopOnly(true);
+this.input.setTopOnly(
+true
+);
 
-crearMenuPrincipal(this);
+
+/* MENÚ */
+
+crearMenuPrincipal(
+this
+);
 
 actualizarHUD();
 
@@ -356,7 +468,10 @@ actualizarHUD();
 
 function actualizar(){
 
-if(!partidaIniciada||jugadorMuerto)
+if(
+!partidaIniciada ||
+jugadorMuerto
+)
 return;
 
 
@@ -364,43 +479,89 @@ return;
 
 if(!juegoCongelado){
 
-jugador.body.setVelocity(0);
+jugador.body.setVelocity(
+0
+);
 
 if(teclado.ARRIBA.isDown)
-jugador.body.setVelocityY(-250);
+jugador.body.setVelocityY(
+-250
+);
 
 if(teclado.ABAJO.isDown)
-jugador.body.setVelocityY(250);
+jugador.body.setVelocityY(
+250
+);
 
 if(teclado.IZQUIERDA.isDown)
-jugador.body.setVelocityX(-250);
+jugador.body.setVelocityX(
+-250
+);
 
 if(teclado.DERECHA.isDown)
-jugador.body.setVelocityX(250);
+jugador.body.setVelocityX(
+250
+);
 
 
-if(Phaser.Input.Keyboard.JustDown(teclado.UNO))
-cambiarArma("PISTOLA");
+/* CAMBIO DE ARMA */
 
-if(Phaser.Input.Keyboard.JustDown(teclado.DOS))
-cambiarArma("RIFLE");
+if(
+Phaser.Input.Keyboard.JustDown(
+teclado.UNO
+)
+)
+cambiarArma(
+"PISTOLA"
+);
 
-if(Phaser.Input.Keyboard.JustDown(teclado.TRES))
-cambiarArma("ESCOPETA");
+if(
+Phaser.Input.Keyboard.JustDown(
+teclado.DOS
+)
+)
+cambiarArma(
+"RIFLE"
+);
+
+if(
+Phaser.Input.Keyboard.JustDown(
+teclado.TRES
+)
+)
+cambiarArma(
+"ESCOPETA"
+);
 
 
-enemigos.getChildren().forEach(enemigo=>{
+/* ENEMIGOS */
 
-if(!enemigo.active)return;
+enemigos.getChildren().forEach(
+enemigo=>{
+
+if(!enemigo.active)
+return;
 
 if(enemigo.tipo==="Glifo")
-perseguirJugador(enemigo,160);
+perseguirJugador(
+enemigo,
+160
+);
 
-else if(enemigo.tipo==="Vortice")
-comportamientoVortice(enemigo);
+else if(
+enemigo.tipo==="Vortice"
+)
+comportamientoVortice(
+enemigo
+);
 
-else if(enemigo.tipo==="Golem")
-perseguirJugador(enemigo,50);
+else if(
+enemigo.tipo==="Golem"
+)
+perseguirJugador(
+enemigo,
+50
+);
 
 });
 
@@ -411,18 +572,43 @@ perseguirJugador(enemigo,50);
 
 if(juegoCongelado){
 
-jugador.body.setVelocity(0);
+jugador.body.setVelocity(
+0
+);
 
-enemigos.getChildren().forEach(e=>{
-if(e.body)e.body.setVelocity(0,0);
+enemigos.getChildren().forEach(
+e=>{
+
+if(e.body)
+e.body.setVelocity(
+0,
+0
+);
+
 });
 
-proyectiles.getChildren().forEach(b=>{
-if(b.body)b.body.setVelocity(0,0);
+proyectiles.getChildren().forEach(
+b=>{
+
+if(b.body)
+b.body.setVelocity(
+0,
+0
+);
+
 });
 
-proyectilesEnemigos.getChildren().forEach(b=>{
-if(b.body)b.body.setVelocity(0,0);
+proyectilesEnemigos
+.getChildren()
+.forEach(
+b=>{
+
+if(b.body)
+b.body.setVelocity(
+0,
+0
+);
+
 });
 
 }
@@ -440,11 +626,17 @@ comprobarFinRonda();
 function estiloHUD(){
 
 return{
+
 fontSize:"18px",
+
 color:"#ffffff",
+
 fontStyle:"bold",
+
 stroke:"#000000",
+
 strokeThickness:4
+
 };
 
 }
@@ -452,14 +644,52 @@ strokeThickness:4
 
 function crearHUD(escena){
 
-textoVida=escena.add.text(20,20,"",estiloHUD());
-textoTiempo=escena.add.text(20,50,"",estiloHUD());
-textoArma=escena.add.text(20,80,"",estiloHUD());
-textoMunicion=escena.add.text(20,110,"",estiloHUD());
-textoEnemigos=escena.add.text(20,140,"",estiloHUD());
+textoVida=
+escena.add.text(
+20,
+20,
+"",
+estiloHUD()
+);
 
-textoRonda=escena.add.text(
-0,20,"",
+textoTiempo=
+escena.add.text(
+20,
+50,
+"",
+estiloHUD()
+);
+
+textoArma=
+escena.add.text(
+20,
+80,
+"",
+estiloHUD()
+);
+
+textoMunicion=
+escena.add.text(
+20,
+110,
+"",
+estiloHUD()
+);
+
+textoEnemigos=
+escena.add.text(
+20,
+140,
+"",
+estiloHUD()
+);
+
+
+textoRonda=
+escena.add.text(
+0,
+20,
+"",
 {
 fontSize:"24px",
 color:"#ffffff",
@@ -469,6 +699,7 @@ strokeThickness:5
 }
 );
 
+
 [
 textoVida,
 textoTiempo,
@@ -476,17 +707,24 @@ textoArma,
 textoMunicion,
 textoEnemigos,
 textoRonda
-].forEach(t=>{
+].forEach(
+t=>{
+
 t.setScrollFactor(0);
+
 t.setDepth(200);
+
 });
+
 
 }
 
 
 function actualizarHUD(){
 
-if(!textoVida)return;
+if(!textoVida)
+return;
+
 
 textoVida.setText(
 `❤️ VIDA: ${vidaJugador} / ${vidaMaxima}`
@@ -519,99 +757,133 @@ redimensionarInterfaz();
 
 function formatearTiempo(segundos){
 
-return String(Math.floor(segundos/60)).padStart(2,"0")
+return String(
+Math.floor(segundos/60)
+).padStart(
+2,
+"0"
+)
 +
 ":"
 +
-String(segundos%60).padStart(2,"0");
+String(
+segundos%60
+).padStart(
+2,
+"0"
+);
 
 }
 
 
 /* =========================
-   RESPONSIVE
+   INTERFAZ RESPONSIVA
 ========================= */
 
 function redimensionarInterfaz(){
 
-if(!escenaPrincipal)return;
+if(!escenaPrincipal)
+return;
 
-const ancho=escenaPrincipal.scale.width;
-const alto=escenaPrincipal.scale.height;
+
+const ancho=
+escenaPrincipal.scale.width;
+
+const alto=
+escenaPrincipal.scale.height;
 
 
 /*
-    El HUD mantiene su tamaño legible.
-    Solo cambia su posición según el tamaño
-    disponible de la pantalla.
+   ESCALA BASE.
+
+   No modifica el mundo ni la física.
+   Solo modifica elementos de interfaz.
 */
 
-const escalaHUD=Phaser.Math.Clamp(
-Math.min(ancho/800,alto/600),
-0.8,
-1.25
+const escala=
+Phaser.Math.Clamp(
+Math.min(
+ancho/800,
+alto/600
+),
+0.75,
+1.35
 );
 
 
-[
+/* HUD */
+
+const hud=[
 textoVida,
 textoTiempo,
 textoArma,
 textoMunicion,
 textoEnemigos
-].forEach(t=>{
+];
 
-if(t){
+hud.forEach(
+(t,i)=>{
 
-t.setScale(escalaHUD);
+if(!t)
+return;
+
+t.setScale(
+escala
+);
 
 t.setPosition(
 20,
-20 + [
-textoVida,
-textoTiempo,
-textoArma,
-textoMunicion,
-textoEnemigos
-].indexOf(t)*30
+20+(i*30)
 );
-
-}
 
 });
 
 
+/* RONDA */
+
 if(textoRonda){
 
-textoRonda.setScale(escalaHUD);
+textoRonda.setScale(
+escala
+);
+
+textoRonda.setOrigin(
+1,
+0
+);
 
 textoRonda.setPosition(
 ancho-20,
 20
 );
 
-textoRonda.setOrigin(1,0);
-
 }
 
 
-if(escenaPrincipal.textoControles){
+/* CONTROLES */
+
+if(
+escenaPrincipal.textoControles
+){
+
+escenaPrincipal.textoControles.setScale(
+escala
+);
+
+escenaPrincipal.textoControles.setOrigin(
+0,
+1
+);
 
 escenaPrincipal.textoControles.setPosition(
 20,
 alto-20
 );
 
-escenaPrincipal.textoControles.setScale(
-Phaser.Math.Clamp(
-Math.min(ancho/800,alto/600),
-0.8,
-1.25
-)
-);
-
 }
 
+
+/* MENÚ */
 
 if(menuPrincipal){
 
@@ -620,16 +892,14 @@ ancho/2,
 alto/2
 );
 
-const escalaMenu=Phaser.Math.Clamp(
-Math.min(ancho/800,alto/600),
-0.7,
-1
+menuPrincipal.setScale(
+escala
 );
-
-menuPrincipal.setScale(escalaMenu);
 
 }
 
+
+/* OVERLAY */
 
 if(overlayActual){
 
@@ -638,13 +908,9 @@ ancho/2,
 alto/2
 );
 
-const escalaOverlay=Phaser.Math.Clamp(
-Math.min(ancho/800,alto/600),
-0.7,
-1
+overlayActual.setScale(
+escala
 );
-
-overlayActual.setScale(escalaOverlay);
 
 }
 
@@ -658,8 +924,8 @@ overlayActual.setScale(escalaOverlay);
 function disparar(pointer){
 
 if(
-!partidaIniciada||
-juegoCongelado||
+!partidaIniciada ||
+juegoCongelado ||
 jugadorMuerto
 )
 return;
@@ -674,55 +940,95 @@ return;
 }
 
 
-const mundoX=pointer.worldX;
-const mundoY=pointer.worldY;
+/*
+   IMPORTANTE:
 
-const angulo=Phaser.Math.Angle.Between(
-jugador.x,
-jugador.y,
-mundoX,
-mundoY
+   Se obtiene la posición real del mouse
+   en coordenadas del MUNDO mediante la cámara.
+
+   Esto funciona aunque la ventana cambie
+   de resolución.
+*/
+
+const puntoMundo=
+escenaPrincipal.cameras.main.getWorldPoint(
+pointer.x,
+pointer.y
 );
 
 
-/* PROYECTIL */
+const angulo=
+Phaser.Math.Angle.Between(
+jugador.x,
+jugador.y,
+puntoMundo.x,
+puntoMundo.y
+);
 
-const bala=escenaPrincipal.add.circle(
+
+/* CREAR PROYECTIL */
+
+const bala=
+escenaPrincipal.add.circle(
 jugador.x,
 jugador.y,
 7,
 0xffff00
 );
 
-escenaPrincipal.physics.add.existing(bala);
+
+/*
+   Arcade Physics normal.
+*/
+
+escenaPrincipal.physics.add.existing(
+bala
+);
 
 
 /*
-    Se mantiene el sistema de movimiento original:
-    setVelocity() de Arcade Physics.
+   MOVIMIENTO DEL PROYECTIL.
+
+   NO se modifica manualmente velocity.x/y.
 */
 
 bala.body.setVelocity(
-Math.cos(angulo)*
+Math.cos(angulo) *
 ARMAS[armaActual].velocidad,
-Math.sin(angulo)*
+
+Math.sin(angulo) *
 ARMAS[armaActual].velocidad
 );
 
 
-bala.dano=ARMAS[armaActual].danoGlifo;
-bala.danoVortice=ARMAS[armaActual].danoVortice;
-bala.danoGolem=ARMAS[armaActual].danoGolem;
+/* DAÑO */
+
+bala.dano=
+ARMAS[armaActual].danoGlifo;
+
+bala.danoVortice=
+ARMAS[armaActual].danoVortice;
+
+bala.danoGolem=
+ARMAS[armaActual].danoGolem;
 
 
-proyectiles.add(bala);
+/* GRUPO */
 
+proyectiles.add(
+bala
+);
+
+
+/* DURACIÓN */
 
 escenaPrincipal.time.delayedCall(
 5000,
 ()=>{
+
 if(bala.active)
 bala.destroy();
+
 }
 );
 
@@ -739,14 +1045,15 @@ iniciarRecargaMatematica();
 
 
 /* =========================
-   CAMBIO ARMA
+   CAMBIO DE ARMA
 ========================= */
 
 function cambiarArma(arma){
 
 armaActual=arma;
 
-municion=ARMAS[arma].maxMunicion;
+municion=
+ARMAS[arma].maxMunicion;
 
 actualizarHUD();
 
@@ -757,80 +1064,144 @@ actualizarHUD();
    ENEMIGOS
 ========================= */
 
-function crearEnemigo(escena,tipo){
+function crearEnemigo(
+escena,
+tipo
+){
 
 let x,y;
 
 do{
 
-x=Phaser.Math.Between(100,2300);
-y=Phaser.Math.Between(100,2300);
+x=Phaser.Math.Between(
+100,
+2300
+);
 
-}while(
+y=Phaser.Math.Between(
+100,
+2300
+);
+
+}
+while(
 Phaser.Math.Distance.Between(
-x,y,jugador.x,jugador.y
+x,
+y,
+jugador.x,
+jugador.y
 )<400
 );
 
 
-let color,tamano,vida,velocidad;
+let color;
+let tamano;
+let vida;
+let velocidad;
+
 
 if(tipo==="Glifo"){
+
 color=0x00ffff;
+
 tamano=32;
+
 vida=20;
+
 velocidad=160;
+
 }
+
 
 if(tipo==="Vortice"){
+
 color=0xff00ff;
+
 tamano=32;
+
 vida=20;
+
 velocidad=80;
+
 }
+
 
 if(tipo==="Golem"){
+
 color=0xff8800;
+
 tamano=48;
+
 vida=150;
+
 velocidad=50;
+
 }
 
 
-const enemigo=escena.add.rectangle(
-x,y,tamano,tamano,color
+const enemigo=
+escena.add.rectangle(
+x,
+y,
+tamano,
+tamano,
+color
 );
 
-escena.physics.add.existing(enemigo);
 
-enemigo.body.setCollideWorldBounds(true);
+escena.physics.add.existing(
+enemigo
+);
+
+
+enemigo.body.setCollideWorldBounds(
+true
+);
+
 
 enemigo.tipo=tipo;
+
 enemigo.vida=vida;
+
 enemigo.vidaMaxima=vida;
+
 enemigo.velocidad=velocidad;
+
 enemigo.ultimoDisparo=0;
 
-enemigos.add(enemigo);
+
+enemigos.add(
+enemigo
+);
 
 }
 
 
-function perseguirJugador(enemigo,velocidad){
+function perseguirJugador(
+enemigo,
+velocidad
+){
 
 if(juegoCongelado){
 
-enemigo.body.setVelocity(0,0);
+enemigo.body.setVelocity(
+0,
+0
+);
+
 return;
 
 }
 
-const angulo=Phaser.Math.Angle.Between(
+
+const angulo=
+Phaser.Math.Angle.Between(
 enemigo.x,
 enemigo.y,
 jugador.x,
 jugador.y
 );
+
 
 enemigo.body.setVelocity(
 Math.cos(angulo)*velocidad,
@@ -844,16 +1215,24 @@ Math.sin(angulo)*velocidad
    VORTICE
 ========================= */
 
-function comportamientoVortice(enemigo){
+function comportamientoVortice(
+enemigo
+){
 
 if(juegoCongelado){
 
-enemigo.body.setVelocity(0,0);
+enemigo.body.setVelocity(
+0,
+0
+);
+
 return;
 
 }
 
-const distancia=Phaser.Math.Distance.Between(
+
+const distancia=
+Phaser.Math.Distance.Between(
 enemigo.x,
 enemigo.y,
 jugador.x,
@@ -862,21 +1241,35 @@ jugador.y
 
 
 if(distancia>350)
-perseguirJugador(enemigo,80);
+
+perseguirJugador(
+enemigo,
+80
+);
+
 else
-enemigo.body.setVelocity(0,0);
+
+enemigo.body.setVelocity(
+0,
+0
+);
 
 
-const ahora=escenaPrincipal.time.now;
+const ahora=
+escenaPrincipal.time.now;
+
 
 if(
 distancia<=600 &&
 ahora-enemigo.ultimoDisparo>2000
 ){
 
-disparoVortice(enemigo);
+disparoVortice(
+enemigo
+);
 
-enemigo.ultimoDisparo=ahora;
+enemigo.ultimoDisparo=
+ahora;
 
 }
 
@@ -887,9 +1280,12 @@ enemigo.ultimoDisparo=ahora;
    PROYECTIL VORTICE
 ========================= */
 
-function disparoVortice(enemigo){
+function disparoVortice(
+enemigo
+){
 
-const angulo=Phaser.Math.Angle.Between(
+const angulo=
+Phaser.Math.Angle.Between(
 enemigo.x,
 enemigo.y,
 jugador.x,
@@ -897,20 +1293,23 @@ jugador.y
 );
 
 
-const bala=escenaPrincipal.add.circle(
+const bala=
+escenaPrincipal.add.circle(
 enemigo.x,
 enemigo.y,
 8,
 0xff00ff
 );
 
-escenaPrincipal.physics.add.existing(bala);
+
+escenaPrincipal.physics.add.existing(
+bala
+);
 
 
 /*
-    Igual que el disparo del jugador:
-    Arcade Physics controla directamente
-    la velocidad del proyectil.
+   MISMO SISTEMA FÍSICO
+   QUE EL PROYECTIL DEL JUGADOR.
 */
 
 bala.body.setVelocity(
@@ -921,14 +1320,19 @@ Math.sin(angulo)*220
 
 bala.dano=10;
 
-proyectilesEnemigos.add(bala);
+
+proyectilesEnemigos.add(
+bala
+);
 
 
 escenaPrincipal.time.delayedCall(
 5000,
 ()=>{
+
 if(bala.active)
 bala.destroy();
+
 }
 );
 
@@ -939,16 +1343,24 @@ bala.destroy();
    DAÑO PROYECTILES
 ========================= */
 
-function impactoProyectilEnemigo(bala,enemigo){
+function impactoProyectilEnemigo(
+bala,
+enemigo
+){
 
-if(!bala.active||!enemigo.active)
+if(
+!bala.active ||
+!enemigo.active
+)
 return;
 
 
 let dano=bala.dano;
 
+
 if(enemigo.tipo==="Vortice")
 dano=bala.danoVortice;
+
 
 if(enemigo.tipo==="Golem")
 dano=bala.danoGolem;
@@ -968,31 +1380,48 @@ actualizarHUD();
 }
 
 
-function impactoProyectilEnemigoJugador(jugador,bala){
+function impactoProyectilEnemigoJugador(
+jugador,
+bala
+){
 
-if(!bala.active)return;
+if(!bala.active)
+return;
+
 
 bala.destroy();
 
-if(invulnerable)return;
 
-recibirDanio(bala.dano);
+if(invulnerable)
+return;
+
+
+recibirDanio(
+bala.dano
+);
 
 }
 
 
-function contactoEnemigo(jugador,enemigo){
+function contactoEnemigo(
+jugador,
+enemigo
+){
 
 if(
-!enemigo.active||
-enemigo.tipo==="Vortice"||
+!enemigo.active ||
+enemigo.tipo==="Vortice" ||
 invulnerable
 )
 return;
 
 
 recibirDanio(
-enemigo.tipo==="Golem"?20:10
+enemigo.tipo==="Golem"
+?
+20
+:
+10
 );
 
 }
@@ -1004,28 +1433,44 @@ enemigo.tipo==="Golem"?20:10
 
 function recibirDanio(dano){
 
-if(invulnerable||jugadorMuerto)
+if(
+invulnerable ||
+jugadorMuerto
+)
 return;
 
+
 vidaJugador-=dano;
+
 
 if(vidaJugador<0)
 vidaJugador=0;
 
+
 actualizarHUD();
+
 
 invulnerable=true;
 
-jugador.setAlpha(0.4);
+jugador.setAlpha(
+0.4
+);
+
 
 escenaPrincipal.time.delayedCall(
 500,
 ()=>{
+
 invulnerable=false;
+
 if(jugador.active)
-jugador.setAlpha(1);
+jugador.setAlpha(
+1
+);
+
 }
 );
+
 
 if(vidaJugador<=0)
 matarJugador();
@@ -1036,6 +1481,7 @@ matarJugador();
 function matarJugador(){
 
 jugadorMuerto=true;
+
 juegoCongelado=true;
 
 mostrarPantallaMuerte();
@@ -1047,48 +1493,96 @@ mostrarPantallaMuerte();
    RONDAS
 ========================= */
 
-function iniciarRonda(escena){
+function iniciarRonda(
+escena
+){
 
 generandoNuevaRonda=false;
 
 let glifos=0;
+
 let vortices=0;
+
 let golems=0;
 
 
 if(rondaActual===1)
+
 glifos=5;
 
+
 else if(rondaActual===2)
+
 vortices=4;
+
 
 else if(rondaActual===3){
+
 glifos=6;
+
 vortices=4;
+
 }
 
+
 else if(rondaActual===4)
+
 golems=3;
+
 
 else{
 
-const aumento=rondaActual-5;
+const aumento=
+rondaActual-5;
 
-glifos=6+aumento*2;
-vortices=4+aumento;
-golems=2+Math.floor(aumento/2);
+glifos=
+6+aumento*2;
+
+vortices=
+4+aumento;
+
+golems=
+2+Math.floor(
+aumento/2
+);
 
 }
 
 
-for(let i=0;i<glifos;i++)
-crearEnemigo(escena,"Glifo");
+for(
+let i=0;
+i<glifos;
+i++
+)
 
-for(let i=0;i<vortices;i++)
-crearEnemigo(escena,"Vortice");
+crearEnemigo(
+escena,
+"Glifo"
+);
 
-for(let i=0;i<golems;i++)
-crearEnemigo(escena,"Golem");
+
+for(
+let i=0;
+i<vortices;
+i++
+)
+
+crearEnemigo(
+escena,
+"Vortice"
+);
+
+
+for(
+let i=0;
+i<golems;
+i++
+)
+
+crearEnemigo(
+escena,
+"Golem"
+);
 
 
 actualizarHUD();
@@ -1099,26 +1593,33 @@ actualizarHUD();
 function comprobarFinRonda(){
 
 if(
-!partidaIniciada||
-jugadorMuerto||
+!partidaIniciada ||
+jugadorMuerto ||
 generandoNuevaRonda
 )
 return;
 
 
-if(enemigos.countActive(true)===0){
+if(
+enemigos.countActive(true)===0
+){
 
 generandoNuevaRonda=true;
+
 
 escenaPrincipal.time.delayedCall(
 1000,
 ()=>{
 
-if(jugadorMuerto)return;
+if(jugadorMuerto)
+return;
+
 
 rondaActual++;
 
-iniciarRonda(escenaPrincipal);
+iniciarRonda(
+escenaPrincipal
+);
 
 }
 );
@@ -1134,15 +1635,21 @@ iniciarRonda(escenaPrincipal);
 
 function iniciarRecargaMatematica(){
 
-if(juegoCongelado||jugadorMuerto)
+if(
+juegoCongelado ||
+jugadorMuerto
+)
 return;
 
+
 juegoCongelado=true;
+
 
 const preguntas=
 BANCO_PREGUNTAS[
 ARMAS[armaActual].dificultad
 ];
+
 
 mostrarPregunta(
 preguntas[0],
@@ -1153,33 +1660,57 @@ preguntas
 }
 
 
-function mostrarPregunta(pregunta,indice,preguntas){
+function mostrarPregunta(
+pregunta,
+indice,
+preguntas
+){
 
 if(overlayActual)
 overlayActual.destroy();
 
 
-const escena=escenaPrincipal;
+const escena=
+escenaPrincipal;
 
-overlayActual=escena.add.container(
+
+overlayActual=
+escena.add.container(
 escena.scale.width/2,
 escena.scale.height/2
 );
 
-overlayActual.setScrollFactor(0);
-overlayActual.setDepth(500);
 
+overlayActual.setScrollFactor(
+0
+);
 
-const fondo=escena.add.rectangle(
-0,0,
-Math.min(escena.scale.width*.85,650),
-Math.min(escena.scale.height*.75,400),
-0x11111a,.97
+overlayActual.setDepth(
+500
 );
 
 
-const titulo=escena.add.text(
-0,-130,
+const fondo=
+escena.add.rectangle(
+0,
+0,
+Math.min(
+escena.scale.width*.85,
+650
+),
+Math.min(
+escena.scale.height*.75,
+400
+),
+0x11111a,
+.97
+);
+
+
+const titulo=
+escena.add.text(
+0,
+-130,
 "RECARGA MATEMÁTICA",
 {
 fontSize:"28px",
@@ -1188,35 +1719,59 @@ fontStyle:"bold"
 }
 );
 
-titulo.setOrigin(.5);
+titulo.setOrigin(
+.5
+);
 
 
-const preguntaTexto=escena.add.text(
-0,-65,
+const preguntaTexto=
+escena.add.text(
+0,
+-65,
 pregunta.pregunta,
 {
 fontSize:"20px",
 color:"#ffffff",
 align:"center",
 wordWrap:{
-width:Math.min(escena.scale.width*.72,560)
+width:Math.min(
+escena.scale.width*.72,
+560
+)
 }
 }
 );
 
-preguntaTexto.setOrigin(.5);
+preguntaTexto.setOrigin(
+.5
+);
 
 
-overlayActual.add(fondo);
-overlayActual.add(titulo);
-overlayActual.add(preguntaTexto);
+overlayActual.add(
+fondo
+);
+
+overlayActual.add(
+titulo
+);
+
+overlayActual.add(
+preguntaTexto
+);
 
 
-const letras=["Z","X","C"];
+const letras=[
+"Z",
+"X",
+"C"
+];
 
-pregunta.opciones.forEach((opcion,i)=>{
 
-const texto=escena.add.text(
+pregunta.opciones.forEach(
+(opcion,i)=>{
+
+const texto=
+escena.add.text(
 0,
 30+i*55,
 `${letras[i]}) ${opcion}`,
@@ -1227,27 +1782,46 @@ align:"center"
 }
 );
 
-texto.setOrigin(.5);
+texto.setOrigin(
+.5
+);
 
-overlayActual.add(texto);
+overlayActual.add(
+texto
+);
 
 });
 
 
 escena.input.keyboard.once(
 "keydown-Z",
-()=>responderPregunta(0,pregunta,indice,preguntas)
+()=>responderPregunta(
+0,
+pregunta,
+indice,
+preguntas
+)
 );
 
 escena.input.keyboard.once(
 "keydown-X",
-()=>responderPregunta(1,pregunta,indice,preguntas)
+()=>responderPregunta(
+1,
+pregunta,
+indice,
+preguntas
+)
 );
 
 escena.input.keyboard.once(
 "keydown-C",
-()=>responderPregunta(2,pregunta,indice,preguntas)
+()=>responderPregunta(
+2,
+pregunta,
+indice,
+preguntas
 );
+
 
 redimensionarInterfaz();
 
@@ -1261,12 +1835,18 @@ indice,
 preguntas
 ){
 
-if(!juegoCongelado)return;
+if(!juegoCongelado)
+return;
 
 
-if(respuesta===pregunta.correcta){
+if(
+respuesta===pregunta.correcta
+){
 
-if(indice+1<preguntas.length){
+if(
+indice+1<
+preguntas.length
+){
 
 mostrarPregunta(
 preguntas[indice+1],
@@ -1274,25 +1854,36 @@ indice+1,
 preguntas
 );
 
-}else{
+}
+else{
 
-municion=ARMAS[armaActual].maxMunicion;
+municion=
+ARMAS[armaActual].maxMunicion;
 
 juegoCongelado=false;
 
+
 if(overlayActual){
+
 overlayActual.destroy();
+
 overlayActual=null;
+
 }
+
 
 actualizarHUD();
 
 }
 
-}else{
+}
+else{
 
 escenaPrincipal.cameras.main.flash(
-150,255,0,0
+150,
+255,
+0,
+0
 );
 
 }
@@ -1304,27 +1895,44 @@ escenaPrincipal.cameras.main.flash(
    MENÚ
 ========================= */
 
-function crearMenuPrincipal(escena){
+function crearMenuPrincipal(
+escena
+){
 
-menuPrincipal=escena.add.container(
+menuPrincipal=
+escena.add.container(
 escena.scale.width/2,
 escena.scale.height/2
 );
 
-menuPrincipal.setScrollFactor(0);
-menuPrincipal.setDepth(100);
-
-
-const fondo=escena.add.rectangle(
-0,0,10000,10000,
-0x101018,.92
+menuPrincipal.setScrollFactor(
+0
 );
 
-menuPrincipal.add(fondo);
+menuPrincipal.setDepth(
+100
+);
 
 
-const titulo=escena.add.text(
-0,-150,
+const fondo=
+escena.add.rectangle(
+0,
+0,
+10000,
+10000,
+0x101018,
+.92
+);
+
+menuPrincipal.add(
+fondo
+);
+
+
+const titulo=
+escena.add.text(
+0,
+-150,
 "CALABOZO DE LA CADENA",
 {
 fontSize:"42px",
@@ -1336,19 +1944,29 @@ align:"center"
 }
 );
 
-titulo.setOrigin(.5);
+titulo.setOrigin(
+.5
+);
 
-menuPrincipal.add(titulo);
+menuPrincipal.add(
+titulo
+);
 
 
 menuPrincipal.add(
 crearBoton(
 escena,
 "▶ JUGAR",
-0,-40,
+0,
+-40,
 ()=>{
-menuPrincipal.setVisible(false);
+
+menuPrincipal.setVisible(
+false
+);
+
 iniciarPartida();
+
 }
 )
 );
@@ -1358,10 +1976,18 @@ menuPrincipal.add(
 crearBoton(
 escena,
 "🎮 CONTROLES",
-0,40,
+0,
+40,
 ()=>{
-menuPrincipal.setVisible(false);
-mostrarControles(escena);
+
+menuPrincipal.setVisible(
+false
+);
+
+mostrarControles(
+escena
+);
+
 }
 )
 );
@@ -1371,10 +1997,18 @@ menuPrincipal.add(
 crearBoton(
 escena,
 "📜 CRÉDITOS",
-0,120,
+0,
+120,
 ()=>{
-menuPrincipal.setVisible(false);
-mostrarCreditos(escena);
+
+menuPrincipal.setVisible(
+false
+);
+
+mostrarCreditos(
+escena
+);
+
 }
 )
 );
@@ -1383,19 +2017,41 @@ mostrarCreditos(escena);
 
 
 function crearBoton(
-escena,texto,x,y,callback
+escena,
+texto,
+x,
+y,
+callback
 ){
 
-const boton=escena.add.container(x,y);
-
-boton.setSize(300,60);
-
-const fondo=escena.add.rectangle(
-0,0,300,60,0x303044
+const boton=
+escena.add.container(
+x,
+y
 );
 
-const textoBoton=escena.add.text(
-0,0,texto,
+
+boton.setSize(
+300,
+60
+);
+
+
+const fondo=
+escena.add.rectangle(
+0,
+0,
+300,
+60,
+0x303044
+);
+
+
+const textoBoton=
+escena.add.text(
+0,
+0,
+texto,
 {
 fontSize:"22px",
 color:"#ffffff",
@@ -1403,29 +2059,62 @@ fontStyle:"bold"
 }
 );
 
-textoBoton.setOrigin(.5);
+textoBoton.setOrigin(
+.5
+);
 
-boton.add(fondo);
-boton.add(textoBoton);
+
+boton.add(
+fondo
+);
+
+boton.add(
+textoBoton
+);
+
 
 boton.setInteractive(
 new Phaser.Geom.Rectangle(
--150,-30,300,60
+-150,
+-30,
+300,
+60
 ),
 Phaser.Geom.Rectangle.Contains
 );
 
-boton.input.cursor="pointer";
 
-boton.on("pointerover",()=>{
-fondo.setFillStyle(0x4b4b6b);
-});
+boton.input.cursor=
+"pointer";
 
-boton.on("pointerout",()=>{
-fondo.setFillStyle(0x303044);
-});
 
-boton.on("pointerdown",(
+boton.on(
+"pointerover",
+()=>{
+
+fondo.setFillStyle(
+0x4b4b6b
+);
+
+}
+);
+
+
+boton.on(
+"pointerout",
+()=>{
+
+fondo.setFillStyle(
+0x303044
+);
+
+}
+);
+
+
+boton.on(
+"pointerdown",
+(
 pointer,
 localX,
 localY,
@@ -1437,10 +2126,18 @@ event.stopPropagation();
 
 callback();
 
-});
+}
+);
 
-boton.setScrollFactor(0);
-boton.setDepth(101);
+
+boton.setScrollFactor(
+0
+);
+
+boton.setDepth(
+101
+);
+
 
 return boton;
 
@@ -1454,39 +2151,81 @@ return boton;
 function iniciarPartida(){
 
 partidaIniciada=true;
+
 juegoCongelado=false;
+
 jugadorMuerto=false;
+
 invulnerable=false;
 
-vidaJugador=vidaMaxima;
-tiempoRestante=tiempoLimite;
+
+vidaJugador=
+vidaMaxima;
+
+tiempoRestante=
+tiempoLimite;
+
 
 rondaActual=1;
+
 generandoNuevaRonda=false;
 
-armaActual="PISTOLA";
+
+armaActual=
+"PISTOLA";
+
 municion=6;
 
-jugador.setPosition(1200,1200);
-jugador.setAlpha(1);
 
-enemigos.clear(true,true);
-proyectiles.clear(true,true);
-proyectilesEnemigos.clear(true,true);
+jugador.setPosition(
+1200,
+1200
+);
+
+jugador.setAlpha(
+1
+);
+
+
+enemigos.clear(
+true,
+true
+);
+
+proyectiles.clear(
+true,
+true
+);
+
+proyectilesEnemigos.clear(
+true,
+true
+);
+
 
 crearTextoControles();
 
-iniciarRonda(escenaPrincipal);
+iniciarRonda(
+escenaPrincipal
+);
 
 actualizarHUD();
 
 }
 
 
+/* =========================
+   CONTROLES
+========================= */
+
 function crearTextoControles(){
 
-if(escenaPrincipal.textoControles)
+if(
+escenaPrincipal.textoControles
+)
+
 escenaPrincipal.textoControles.destroy();
+
 
 escenaPrincipal.textoControles=
 escenaPrincipal.add.text(
@@ -1501,9 +2240,20 @@ strokeThickness:4
 }
 );
 
-escenaPrincipal.textoControles.setScrollFactor(0);
-escenaPrincipal.textoControles.setDepth(200);
-escenaPrincipal.textoControles.setOrigin(0,1);
+
+escenaPrincipal.textoControles.setScrollFactor(
+0
+);
+
+escenaPrincipal.textoControles.setDepth(
+200
+);
+
+escenaPrincipal.textoControles.setOrigin(
+0,
+1
+);
+
 
 redimensionarInterfaz();
 
@@ -1514,7 +2264,9 @@ redimensionarInterfaz();
    CONTROLES / CRÉDITOS
 ========================= */
 
-function mostrarControles(escena){
+function mostrarControles(
+escena
+){
 
 crearOverlayInformativo(
 escena,
@@ -1537,7 +2289,9 @@ escena,
 }
 
 
-function mostrarCreditos(escena){
+function mostrarCreditos(
+escena
+){
 
 crearOverlayInformativo(
 escena,
@@ -1564,25 +2318,43 @@ if(overlayActual)
 overlayActual.destroy();
 
 
-overlayActual=escena.add.container(
+overlayActual=
+escena.add.container(
 escena.scale.width/2,
 escena.scale.height/2
 );
 
-overlayActual.setScrollFactor(0);
-overlayActual.setDepth(600);
 
+overlayActual.setScrollFactor(
+0
+);
 
-const fondo=escena.add.rectangle(
-0,0,
-Math.min(escena.scale.width*.9,650),
-Math.min(escena.scale.height*.85,500),
-0x11111a,.98
+overlayActual.setDepth(
+600
 );
 
 
-const titulo=escena.add.text(
-0,-180,
+const fondo=
+escena.add.rectangle(
+0,
+0,
+Math.min(
+escena.scale.width*.9,
+650
+),
+Math.min(
+escena.scale.height*.85,
+500
+),
+0x11111a,
+.98
+);
+
+
+const titulo=
+escena.add.text(
+0,
+-180,
 tituloTexto,
 {
 fontSize:"38px",
@@ -1593,11 +2365,15 @@ strokeThickness:6
 }
 );
 
-titulo.setOrigin(.5);
+titulo.setOrigin(
+.5
+);
 
 
-const contenido=escena.add.text(
-0,-70,
+const contenido=
+escena.add.text(
+0,
+-70,
 lineas.join("\n"),
 {
 fontSize:"21px",
@@ -1605,36 +2381,54 @@ color:"#ffffff",
 align:"center",
 lineSpacing:8,
 wordWrap:{
-width:Math.min(escena.scale.width*.75,520)
+width:Math.min(
+escena.scale.width*.75,
+520
+)
 }
 }
 );
 
-contenido.setOrigin(.5);
+contenido.setOrigin(
+.5
+);
 
 
-overlayActual.add(fondo);
-overlayActual.add(titulo);
-overlayActual.add(contenido);
+overlayActual.add(
+fondo
+);
+
+overlayActual.add(
+titulo
+);
+
+overlayActual.add(
+contenido
+);
 
 
 overlayActual.add(
 crearBoton(
 escena,
 "← VOLVER",
-0,170,
+0,
+170,
 ()=>{
 
 overlayActual.destroy();
+
 overlayActual=null;
 
-menuPrincipal.setVisible(true);
+menuPrincipal.setVisible(
+true
+);
 
 redimensionarInterfaz();
 
 }
 )
 );
+
 
 redimensionarInterfaz();
 
@@ -1651,27 +2445,41 @@ if(overlayActual)
 overlayActual.destroy();
 
 
-const escena=escenaPrincipal;
+const escena=
+escenaPrincipal;
 
-overlayActual=escena.add.container(
+
+overlayActual=
+escena.add.container(
 escena.scale.width/2,
 escena.scale.height/2
 );
 
-overlayActual.setScrollFactor(0);
-overlayActual.setDepth(1000);
 
+overlayActual.setScrollFactor(
+0
+);
 
-const fondo=escena.add.rectangle(
-0,0,
-escena.scale.width,
-escena.scale.height,
-0x000000,.8
+overlayActual.setDepth(
+1000
 );
 
 
-const titulo=escena.add.text(
-0,-70,
+const fondo=
+escena.add.rectangle(
+0,
+0,
+escena.scale.width,
+escena.scale.height,
+0x000000,
+.8
+);
+
+
+const titulo=
+escena.add.text(
+0,
+-70,
 "HAS MUERTO",
 {
 fontSize:"52px",
@@ -1682,11 +2490,15 @@ strokeThickness:8
 }
 );
 
-titulo.setOrigin(.5);
+titulo.setOrigin(
+.5
+);
 
 
-const informacion=escena.add.text(
-0,20,
+const informacion=
+escena.add.text(
+0,
+20,
 `Llegaste a la ronda ${rondaActual}\n\nRecarga la página para volver a jugar`,
 {
 fontSize:"22px",
@@ -1695,12 +2507,23 @@ align:"center"
 }
 );
 
-informacion.setOrigin(.5);
+informacion.setOrigin(
+.5
+);
 
 
-overlayActual.add(fondo);
-overlayActual.add(titulo);
-overlayActual.add(informacion);
+overlayActual.add(
+fondo
+);
+
+overlayActual.add(
+titulo
+);
+
+overlayActual.add(
+informacion
+);
+
 
 redimensionarInterfaz();
 
