@@ -18,10 +18,10 @@
             height: 100%;
             overflow: hidden;
             background-color: #111;
+            font-family: sans-serif;
         }
 
         body {
-            font-family: sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -30,7 +30,6 @@
         #canvas-container {
             width: 100vw;
             height: 100vh;
-
             display: flex;
             justify-content: center;
             align-items: center;
@@ -51,16 +50,6 @@
 const config = {
 
     type: Phaser.AUTO,
-
-    /*
-     * ==================================================
-     * RESOLUCIÓN ADAPTABLE
-     * ==================================================
-     *
-     * El juego mantiene una resolución lógica de 800x600,
-     * pero Phaser la escala automáticamente para ocupar
-     * todo el espacio posible de la pantalla.
-     */
 
     width: 800,
     height: 600,
@@ -83,7 +72,6 @@ const config = {
             gravity: {
                 y: 0
             },
-
             debug: false
         }
     },
@@ -231,7 +219,6 @@ const BANCO_PREGUNTAS = {
         }
     ],
 
-
     'Medio': [
 
         {
@@ -262,7 +249,6 @@ const BANCO_PREGUNTAS = {
             }
         }
     ],
-
 
     'Difícil': [
 
@@ -465,17 +451,21 @@ function create() {
 
 
     // ==================================================
-    // UI DEL JUEGO
+    // UI RESPONSIVA
     // ==================================================
 
     textoUI = this.add.text(
-        20,
-        20,
+        18,
+        18,
         '',
         {
             fontSize: '18px',
             fill: '#ffffff',
-            fontStyle: 'bold'
+            fontStyle: 'bold',
+            lineSpacing: 4,
+            wordWrap: {
+                width: 350
+            }
         }
     )
     .setScrollFactor(0)
@@ -483,8 +473,8 @@ function create() {
 
 
     textoRonda = this.add.text(
-        780,
-        20,
+        782,
+        18,
         '',
         {
             fontSize: '22px',
@@ -498,13 +488,13 @@ function create() {
 
 
     // ==================================================
-    // MÓDULO MATEMÁTICO
+    // MÓDULO MATEMÁTICO RESPONSIVO
     // ==================================================
 
     contenedorMatematicas =
         this.add.container(
             400,
-            480
+            500
         )
         .setScrollFactor(0)
         .setDepth(30);
@@ -513,9 +503,9 @@ function create() {
         0,
         0,
         720,
-        200,
+        190,
         0x0b0b14,
-        0.95
+        0.96
     );
 
     fondoMat.setStrokeStyle(
@@ -525,13 +515,13 @@ function create() {
 
     textoMatematicas = this.add.text(
         -340,
-        -80,
+        -78,
         '',
         {
             fontSize: '15px',
             fill: '#ffffff',
             fontStyle: 'bold',
-            lineSpacing: 8,
+            lineSpacing: 6,
             wordWrap: {
                 width: 680
             }
@@ -563,7 +553,6 @@ function create() {
             ) {
 
                 tiempoLimite--;
-
             }
 
             actualizarUI();
@@ -585,7 +574,6 @@ function create() {
             if (partidaIniciada) {
 
                 disparar(this);
-
             }
 
         }
@@ -607,7 +595,6 @@ function create() {
 function update() {
 
     if (!partidaIniciada) {
-
         return;
     }
 
@@ -630,7 +617,6 @@ function update() {
             enemigo => {
 
                 enemigo.body.setVelocity(0);
-
             }
         );
 
@@ -638,7 +624,6 @@ function update() {
             proyectil => {
 
                 proyectil.body.setVelocity(0);
-
             }
         );
 
@@ -700,7 +685,6 @@ function update() {
     } else if (teclado.DERECHA.isDown) {
 
         jugador.body.setVelocityX(velocidad);
-
     }
 
 
@@ -711,7 +695,6 @@ function update() {
     } else if (teclado.ABAJO.isDown) {
 
         jugador.body.setVelocityY(velocidad);
-
     }
 
 
@@ -766,7 +749,6 @@ function update() {
                 } else {
 
                     enemigo.body.setVelocity(0);
-
                 }
 
 
@@ -786,6 +768,82 @@ function update() {
             }
         }
     );
+}
+
+
+// ==================================================
+// ESCALA RESPONSIVA DE INTERFAZ
+// ==================================================
+
+function obtenerEscalaUI() {
+
+    let ancho =
+        escenaJuego.scale.gameSize.width;
+
+    let alto =
+        escenaJuego.scale.gameSize.height;
+
+
+    let escalaX =
+        ancho / 800;
+
+    let escalaY =
+        alto / 600;
+
+
+    return Math.min(
+        escalaX,
+        escalaY
+    );
+}
+
+
+function actualizarEscalaUI() {
+
+    if (!escenaJuego) {
+        return;
+    }
+
+
+    let escala =
+        obtenerEscalaUI();
+
+
+    /*
+     * En pantallas grandes la interfaz conserva
+     * tamaños cómodos y no se vuelve exageradamente grande.
+     */
+
+    let escalaLimitada =
+        Phaser.Math.Clamp(
+            escala,
+            0.75,
+            1.35
+        );
+
+
+    if (textoUI) {
+
+        textoUI.setScale(
+            escalaLimitada
+        );
+    }
+
+
+    if (textoRonda) {
+
+        textoRonda.setScale(
+            escalaLimitada
+        );
+    }
+
+
+    if (contenedorMatematicas) {
+
+        contenedorMatematicas.setScale(
+            escalaLimitada
+        );
+    }
 }
 
 
@@ -857,7 +915,6 @@ function crearMenuPrincipal(escena) {
             () => {
 
                 iniciarPartida();
-
             }
         );
 
@@ -871,7 +928,6 @@ function crearMenuPrincipal(escena) {
             () => {
 
                 mostrarControles();
-
             }
         );
 
@@ -885,7 +941,6 @@ function crearMenuPrincipal(escena) {
             () => {
 
                 mostrarCreditos();
-
             }
         );
 
@@ -985,7 +1040,6 @@ function crearBoton(
             textoBoton.setStyle({
                 fill: '#ffff00'
             });
-
         }
     );
 
@@ -1001,7 +1055,6 @@ function crearBoton(
             textoBoton.setStyle({
                 fill: '#ffffff'
             });
-
         }
     );
 
@@ -1020,7 +1073,6 @@ function crearBoton(
             }
 
             accion();
-
         }
     );
 
@@ -1176,7 +1228,6 @@ function mostrarControles() {
                 menuControles.destroy();
 
                 menuPrincipal.setVisible(true);
-
             }
         );
 
@@ -1267,7 +1318,6 @@ function mostrarCreditos() {
                 menuCreditos.destroy();
 
                 menuPrincipal.setVisible(true);
-
             }
         );
 
@@ -1670,7 +1720,6 @@ function dispararProyectilVortice(
             ) {
 
                 proyectil.destroy();
-
             }
         }
     );
@@ -1708,7 +1757,6 @@ function contactoEnemigo(
     ) {
 
         recibirDaño(10);
-
     }
 
 
@@ -1717,7 +1765,6 @@ function contactoEnemigo(
     ) {
 
         recibirDaño(20);
-
     }
 }
 
@@ -1801,7 +1848,6 @@ function recibirDaño(
                 invulnerable = false;
 
                 jugador.setAlpha(1);
-
             }
         }
     );
@@ -1831,7 +1877,6 @@ function morirJugador() {
         enemigo => {
 
             enemigo.body.setVelocity(0);
-
         }
     );
 
@@ -1840,7 +1885,6 @@ function morirJugador() {
         proyectil => {
 
             proyectil.body.setVelocity(0);
-
         }
     );
 
@@ -1922,7 +1966,6 @@ function impactarEnemigo(
     ) {
 
         daño = armaActual.dañoGlifo;
-
     }
 
 
@@ -1931,7 +1974,6 @@ function impactarEnemigo(
     ) {
 
         daño = armaActual.dañoVortice;
-
     }
 
 
@@ -1940,7 +1982,6 @@ function impactarEnemigo(
     ) {
 
         daño = armaActual.dañoGolem;
-
     }
 
 
@@ -2035,6 +2076,9 @@ function actualizarUI() {
             `RONDA ${rondaActual}`
         );
     }
+
+
+    actualizarEscalaUI();
 }
 
 
@@ -2098,7 +2142,6 @@ function mostrarPaso() {
         `👉 ${paso.opciones[0]}    👉 ${paso.opciones[1]}    👉 ${paso.opciones[2]}\n\n` +
 
         `Z = primera opción     X = segunda opción     C = tercera opción`
-
     );
 }
 
@@ -2125,7 +2168,6 @@ function manejarRecarga() {
     ) {
 
         seleccion = 0;
-
     }
 
 
@@ -2136,7 +2178,6 @@ function manejarRecarga() {
     ) {
 
         seleccion = 1;
-
     }
 
 
@@ -2147,7 +2188,6 @@ function manejarRecarga() {
     ) {
 
         seleccion = 2;
-
     }
 
 
@@ -2197,7 +2237,6 @@ function manejarRecarga() {
                         3,
                         0xffaa00
                     );
-
                 }
             );
         }
