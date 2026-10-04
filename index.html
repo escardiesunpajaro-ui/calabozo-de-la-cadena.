@@ -94,6 +94,16 @@ let jugadorMuerto = false;
 
 
 // ==================================================
+// ESTADO DEL JUEGO
+// ==================================================
+
+let partidaIniciada = false;
+let menuPrincipal;
+let menuControles;
+let menuCreditos;
+
+
+// ==================================================
 // SISTEMA DE RONDAS
 // ==================================================
 
@@ -278,6 +288,11 @@ function create() {
 
     escenaJuego = this;
 
+
+    // ==================================================
+    // MUNDO
+    // ==================================================
+
     this.physics.world.setBounds(
         0,
         0,
@@ -390,13 +405,6 @@ function create() {
 
 
     // ==================================================
-    // PRIMERA RONDA
-    // ==================================================
-
-    iniciarRonda(this);
-
-
-    // ==================================================
     // COLISIONES
     // ==================================================
 
@@ -426,7 +434,7 @@ function create() {
 
 
     // ==================================================
-    // UI
+    // UI DEL JUEGO
     // ==================================================
 
     textoUI = this.add.text(
@@ -438,7 +446,9 @@ function create() {
             fill: '#ffffff',
             fontStyle: 'bold'
         }
-    ).setScrollFactor(0);
+    )
+    .setScrollFactor(0)
+    .setDepth(20);
 
 
     textoRonda = this.add.text(
@@ -452,10 +462,8 @@ function create() {
         }
     )
     .setOrigin(1, 0)
-    .setScrollFactor(0);
-
-
-    actualizarUI();
+    .setScrollFactor(0)
+    .setDepth(20);
 
 
     // ==================================================
@@ -466,7 +474,9 @@ function create() {
         this.add.container(
             400,
             480
-        ).setScrollFactor(0);
+        )
+        .setScrollFactor(0)
+        .setDepth(30);
 
     fondoMat = this.add.rectangle(
         0,
@@ -515,7 +525,11 @@ function create() {
 
         callback: () => {
 
-            if (tiempoLimite > 0) {
+            if (
+                partidaIniciada &&
+                tiempoLimite > 0 &&
+                !jugadorMuerto
+            ) {
 
                 tiempoLimite--;
 
@@ -537,10 +551,21 @@ function create() {
         'pointerdown',
         () => {
 
-            disparar(this);
+            if (partidaIniciada) {
+
+                disparar(this);
+
+            }
 
         }
     );
+
+
+    // ==================================================
+    // MENÚ PRINCIPAL
+    // ==================================================
+
+    crearMenuPrincipal(this);
 }
 
 
@@ -549,6 +574,12 @@ function create() {
 // ==================================================
 
 function update() {
+
+    if (!partidaIniciada) {
+
+        return;
+    }
+
 
     if (jugadorMuerto) {
 
@@ -732,6 +763,440 @@ function update() {
 
 
 // ==================================================
+// MENÚ PRINCIPAL
+// ==================================================
+
+function crearMenuPrincipal(escena) {
+
+    menuPrincipal =
+        escena.add.container(
+            400,
+            300
+        )
+        .setScrollFactor(0)
+        .setDepth(100);
+
+
+    let fondo =
+        escena.add.rectangle(
+            0,
+            0,
+            800,
+            600,
+            0x080810,
+            0.97
+        );
+
+
+    let titulo =
+        escena.add.text(
+            0,
+            -190,
+            'CALABOZO DE LA CADENA',
+            {
+                fontSize: '42px',
+                fill: '#ffffff',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 8
+            }
+        )
+        .setOrigin(0.5);
+
+
+    let subtitulo =
+        escena.add.text(
+            0,
+            -140,
+            'SUPERVIVENCIA INFINITA',
+            {
+                fontSize: '16px',
+                fill: '#aaaaaa',
+                fontStyle: 'bold'
+            }
+        )
+        .setOrigin(0.5);
+
+
+    let botonJugar =
+        crearBoton(
+            escena,
+            0,
+            -60,
+            '▶  JUGAR',
+            () => {
+
+                iniciarPartida();
+
+            }
+        );
+
+
+    let botonControles =
+        crearBoton(
+            escena,
+            0,
+            20,
+            '🎮  CONTROLES',
+            () => {
+
+                mostrarControles();
+
+            }
+        );
+
+
+    let botonCreditos =
+        crearBoton(
+            escena,
+            0,
+            100,
+            '📜  CRÉDITOS',
+            () => {
+
+                mostrarCreditos();
+
+            }
+        );
+
+
+    menuPrincipal.add([
+        fondo,
+        titulo,
+        subtitulo,
+        botonJugar,
+        botonControles,
+        botonCreditos
+    ]);
+}
+
+
+// ==================================================
+// CREAR BOTÓN
+// ==================================================
+
+function crearBoton(
+    escena,
+    x,
+    y,
+    texto,
+    accion
+) {
+
+    let boton =
+        escena.add.text(
+            x,
+            y,
+            texto,
+            {
+                fontSize: '25px',
+                fill: '#ffffff',
+                fontStyle: 'bold',
+                backgroundColor: '#252538',
+                padding: {
+                    left: 30,
+                    right: 30,
+                    top: 12,
+                    bottom: 12
+                }
+            }
+        )
+        .setOrigin(0.5)
+        .setInteractive({
+            useHandCursor: true
+        });
+
+
+    boton.on(
+        'pointerover',
+        () => {
+
+            boton.setStyle({
+                fill: '#ffff00',
+                backgroundColor: '#383850'
+            });
+
+        }
+    );
+
+
+    boton.on(
+        'pointerout',
+        () => {
+
+            boton.setStyle({
+                fill: '#ffffff',
+                backgroundColor: '#252538'
+            });
+
+        }
+    );
+
+
+    boton.on(
+        'pointerdown',
+        accion
+    );
+
+
+    return boton;
+}
+
+
+// ==================================================
+// INICIAR PARTIDA
+// ==================================================
+
+function iniciarPartida() {
+
+    partidaIniciada = true;
+
+    menuPrincipal.setVisible(false);
+
+    vidaJugador = vidaMaxima;
+    jugadorMuerto = false;
+    invulnerable = false;
+
+    rondaActual = 1;
+    generandoNuevaRonda = false;
+
+    tiempoLimite = 900;
+
+    armaActual = ARMAS.PISTOLA;
+    balasActuales = armaActual.balasMax;
+
+    jugador.setPosition(
+        1200,
+        1200
+    );
+
+    jugador.setAlpha(1);
+
+
+    // Eliminar cualquier enemigo anterior
+    enemigos.clear(
+        true,
+        true
+    );
+
+
+    proyectilesEnemigos.clear(
+        true,
+        true
+    );
+
+
+    balas.clear(
+        true,
+        true
+    );
+
+
+    iniciarRonda(
+        escenaJuego
+    );
+
+
+    actualizarUI();
+}
+
+
+// ==================================================
+// MENÚ CONTROLES
+// ==================================================
+
+function mostrarControles() {
+
+    menuPrincipal.setVisible(false);
+
+
+    menuControles =
+        escenaJuego.add.container(
+            400,
+            300
+        )
+        .setScrollFactor(0)
+        .setDepth(110);
+
+
+    let fondo =
+        escenaJuego.add.rectangle(
+            0,
+            0,
+            800,
+            600,
+            0x080810,
+            0.98
+        );
+
+
+    let titulo =
+        escenaJuego.add.text(
+            0,
+            -210,
+            'CONTROLES',
+            {
+                fontSize: '40px',
+                fill: '#ffffff',
+                fontStyle: 'bold'
+            }
+        )
+        .setOrigin(0.5);
+
+
+    let controles =
+        escenaJuego.add.text(
+            0,
+            -90,
+
+            'MOVIMIENTO\n\n' +
+
+            'W  →  Arriba\n' +
+            'A  →  Izquierda\n' +
+            'S  →  Abajo\n' +
+            'D  →  Derecha\n\n' +
+
+            'COMBATE\n\n' +
+
+            'Click izquierdo  →  Disparar\n\n' +
+
+            'ARMAS\n\n' +
+
+            '1  →  Pistola\n' +
+            '2  →  Rifle\n' +
+            '3  →  Escopeta\n\n' +
+
+            'RECARGA\n\n' +
+
+            'Z / X / C  →  Responder preguntas',
+
+            {
+                fontSize: '19px',
+                fill: '#ffffff',
+                align: 'center',
+                lineSpacing: 5
+            }
+        )
+        .setOrigin(0.5);
+
+
+    let volver =
+        crearBoton(
+            escenaJuego,
+            0,
+            210,
+            '← VOLVER',
+            () => {
+
+                menuControles.destroy();
+
+                menuPrincipal.setVisible(true);
+
+            }
+        );
+
+
+    menuControles.add([
+        fondo,
+        titulo,
+        controles,
+        volver
+    ]);
+}
+
+
+// ==================================================
+// MENÚ CRÉDITOS
+// ==================================================
+
+function mostrarCreditos() {
+
+    menuPrincipal.setVisible(false);
+
+
+    menuCreditos =
+        escenaJuego.add.container(
+            400,
+            300
+        )
+        .setScrollFactor(0)
+        .setDepth(110);
+
+
+    let fondo =
+        escenaJuego.add.rectangle(
+            0,
+            0,
+            800,
+            600,
+            0x080810,
+            0.98
+        );
+
+
+    let titulo =
+        escenaJuego.add.text(
+            0,
+            -180,
+            'CRÉDITOS',
+            {
+                fontSize: '40px',
+                fill: '#ffffff',
+                fontStyle: 'bold'
+            }
+        )
+        .setOrigin(0.5);
+
+
+    let texto =
+        escenaJuego.add.text(
+            0,
+            -60,
+
+            'CALABOZO DE LA CADENA\n\n' +
+
+            'Juego de supervivencia por oleadas.\n\n' +
+
+            'Combate + Matemáticas + Supervivencia\n\n' +
+
+            'Proyecto académico',
+
+            {
+                fontSize: '20px',
+                fill: '#ffffff',
+                align: 'center',
+                lineSpacing: 10
+            }
+        )
+        .setOrigin(0.5);
+
+
+    let volver =
+        crearBoton(
+            escenaJuego,
+            0,
+            170,
+            '← VOLVER',
+            () => {
+
+                menuCreditos.destroy();
+
+                menuPrincipal.setVisible(true);
+
+            }
+        );
+
+
+    menuCreditos.add([
+        fondo,
+        titulo,
+        texto,
+        volver
+    ]);
+}
+
+
+// ==================================================
 // SISTEMA DE RONDAS
 // ==================================================
 
@@ -739,10 +1204,6 @@ function iniciarRonda(escena) {
 
     generandoNuevaRonda = true;
 
-
-    // ==========================================
-    // CONFIGURACIÓN DE LA RONDA
-    // ==========================================
 
     let cantidadGlifos = 0;
     let cantidadVortices = 0;
@@ -798,10 +1259,7 @@ function iniciarRonda(escena) {
     }
 
 
-    // ==========================================
-    // CREAR GLIFOS
-    // ==========================================
-
+    // GLIFOS
     for (
         let i = 0;
         i < cantidadGlifos;
@@ -817,10 +1275,7 @@ function iniciarRonda(escena) {
     }
 
 
-    // ==========================================
-    // CREAR VÓRTICES
-    // ==========================================
-
+    // VÓRTICES
     for (
         let i = 0;
         i < cantidadVortices;
@@ -836,10 +1291,7 @@ function iniciarRonda(escena) {
     }
 
 
-    // ==========================================
-    // CREAR GOLEMS
-    // ==========================================
-
+    // GOLEMS
     for (
         let i = 0;
         i < cantidadGolems;
@@ -923,7 +1375,6 @@ function comprobarFinRonda() {
         generandoNuevaRonda = true;
 
 
-        // Pequeña pausa entre rondas
         escenaJuego.time.delayedCall(
             1000,
             () => {
@@ -960,10 +1411,6 @@ function crearEnemigo(
     let y;
     let distanciaJugador;
 
-
-    // ==========================================
-    // BUSCAR UNA POSICIÓN LEJANA DEL JUGADOR
-    // ==========================================
 
     do {
 
@@ -1031,7 +1478,8 @@ function disparar(escena) {
 
     if (
         juegoCongelado ||
-        jugadorMuerto
+        jugadorMuerto ||
+        !partidaIniciada
     ) {
 
         return;
@@ -1178,7 +1626,6 @@ function contactoEnemigo(
     }
 
 
-    // Vórtice NO hace daño por contacto.
     if (
         enemigo.tipo === 'Vortice'
     ) {
@@ -1223,8 +1670,6 @@ function impactoProyectilEnemigo(
     }
 
 
-    // El proyectil desaparece aunque
-    // el jugador esté temporalmente invulnerable.
     proyectil.destroy();
 
 
@@ -1271,10 +1716,6 @@ function recibirDaño(
     actualizarUI();
 
 
-    // ==========================================
-    // INVULNERABILIDAD TEMPORAL
-    // ==========================================
-
     invulnerable = true;
 
     jugador.setAlpha(0.4);
@@ -1296,10 +1737,6 @@ function recibirDaño(
         }
     );
 
-
-    // ==========================================
-    // MUERTE
-    // ==========================================
 
     if (
         vidaJugador <= 0
@@ -1339,10 +1776,6 @@ function morirJugador() {
     );
 
 
-    // ==========================================
-    // PANTALLA DE MUERTE
-    // ==========================================
-
     let fondoMuerte =
         escenaJuego.add.rectangle(
             400,
@@ -1351,40 +1784,43 @@ function morirJugador() {
             600,
             0x000000,
             0.75
-        ).setScrollFactor(0);
-
-
-    let textoMuerte =
-        escenaJuego.add.text(
-            400,
-            300,
-            'HAS MUERTO',
-            {
-                fontSize: '48px',
-                fill: '#ff0000',
-                fontStyle: 'bold'
-            }
         )
-        .setOrigin(0.5)
-        .setScrollFactor(0);
+        .setScrollFactor(0)
+        .setDepth(90);
+
+
+    escenaJuego.add.text(
+        400,
+        250,
+        'HAS MUERTO',
+        {
+            fontSize: '48px',
+            fill: '#ff0000',
+            fontStyle: 'bold'
+        }
+    )
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(91);
+
+
+    escenaJuego.add.text(
+        400,
+        320,
+        `Llegaste a la ronda ${rondaActual}`,
+        {
+            fontSize: '20px',
+            fill: '#ffffff'
+        }
+    )
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(91);
 
 
     escenaJuego.add.text(
         400,
         360,
-        `Llegaste a la ronda ${rondaActual}`,
-        {
-            fontSize: '18px',
-            fill: '#ffffff'
-        }
-    )
-    .setOrigin(0.5)
-    .setScrollFactor(0);
-
-
-    escenaJuego.add.text(
-        400,
-        395,
         'Recarga la página para volver a jugar',
         {
             fontSize: '18px',
@@ -1392,7 +1828,8 @@ function morirJugador() {
         }
     )
     .setOrigin(0.5)
-    .setScrollFactor(0);
+    .setScrollFactor(0)
+    .setDepth(91);
 }
 
 
@@ -1447,9 +1884,6 @@ function impactarEnemigo(
 
         enemigo.destroy();
 
-
-        // Comprobar si este era el último
-        // enemigo de la ronda.
         comprobarFinRonda();
     }
 }
