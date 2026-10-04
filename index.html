@@ -1,305 +1,121 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calabozo de la Cadena</title>
-
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-
 <style>
-html,
-body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #111;
-    overflow: hidden;
-    font-family: sans-serif;
-}
-
-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-#canvas-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}
-
-canvas {
-    display: block;
-    touch-action: none;
-}
+html, body { margin:0; padding:0; width:100%; height:100%; background:#111; overflow:hidden; font-family:sans-serif; }
+body { display:flex; justify-content:center; align-items:center; }
+#canvas-container { width:100%; height:100%; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+canvas { display:block; touch-action:none; }
 </style>
-
 </head>
-
 <body>
 <div id="canvas-container"></div>
-
 <script>
 
 const config = {
     type: Phaser.AUTO,
-
     width: 800,
     height: 600,
-
     parent: 'canvas-container',
-
     backgroundColor: '#1a1a24',
-
-    physics: {
-        default: 'arcade',
-
-        arcade: {
-            gravity: {
-                y: 0
-            },
-
-            debug: false
-        }
-    },
-
-    scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
-
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
-    }
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+    scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: { preload: preload, create: create, update: update }
 };
 
 const game = new Phaser.Game(config);
-
 
 // ==================================================
 // VARIABLES
 // ==================================================
 
-let jugador;
-let teclado;
-let mouse;
-let escenaJuego;
+let jugador, teclado, mouse, escenaJuego;
+let enemigos, balas, proyectilesEnemigos;
 
-let enemigos;
-let balas;
-let proyectilesEnemigos;
+const TIEMPO_PARTIDA = 900;
+let tiempoLimite = TIEMPO_PARTIDA;
 
-let tiempoLimite = 900;
-
-let textoUI;
-let textoRonda;
-
-let contenedorMatematicas;
-let fondoMat;
-
-let textoTituloMat;
-let textoFuncionMat;
-let textoPreguntaMat;
-let textoRespuesta1;
-let textoRespuesta2;
-let textoRespuesta3;
-let textoAyudaMat;
+let textoUI, textoRonda;
+let contenedorMatematicas, fondoMat;
+let textoTituloMat, textoFuncionMat, textoPreguntaMat;
+let textoRespuesta1, textoRespuesta2, textoRespuesta3, textoAyudaMat;
 
 let juegoCongelado = false;
-let jugadorMuerto = false;
-
-
-// ==================================================
-// ESTADO DEL JUEGO
-// ==================================================
-
+let jugadorMuerto = false;      // true también cuando la partida termina (victoria o derrota)
 let partidaIniciada = false;
+let partidaId = 0;              // evita que callbacks de una partida anterior afecten a la nueva
+let ultimoClickBoton = -1000;   // evita disparar al pulsar un botón
 
-let menuPrincipal;
-let menuControles;
-let menuCreditos;
-
-
-// ==================================================
-// SISTEMA DE RONDAS
-// ==================================================
+let menuPrincipal, menuControles, menuCreditos, pantallaFin;
 
 let rondaActual = 1;
 let generandoNuevaRonda = false;
 
-
-// ==================================================
-// VIDA DEL JUGADOR
-// ==================================================
-
 let vidaJugador = 100;
-const vidaMaxima = 100;
+let vidaMaxima = 100;
 
+// Puntos por enemigo eliminado (los minigolems no dan)
+let puntos = 0;
+const PUNTOS = { Glifo: 10, Vortice: 15, Golem: 30, Minigolem: 0, Limite: 20, Boss: 100 };
+
+// Modificadores de mejoras
+let multDefensa = 1;
+let dañoMult = 1;
+let capMult = 1;
+let velMult = 1;
+let regenRonda = 0;
+
+function maxBalas(arma) {
+    return Math.round(arma.balasMax * capMult);
+}
 let invulnerable = false;
 const tiempoInvulnerabilidad = 500;
-
 
 // ==================================================
 // ARMAS
 // ==================================================
 
 const ARMAS = {
-
-    PISTOLA: {
-        nombre: 'Pistola',
-        balasMax: 6,
-        dañoGlifo: 20,
-        dañoVortice: 20,
-        dañoGolem: 10,
-        velocidadBala: 450,
-        dif: 'Fácil'
-    },
-
-    RIFLE: {
-        nombre: 'Rifle',
-        balasMax: 15,
-        dañoGlifo: 10,
-        dañoVortice: 10,
-        dañoGolem: 10,
-        velocidadBala: 650,
-        dif: 'Medio'
-    },
-
-    ESCOPETA: {
-        nombre: 'Escopeta',
-        balasMax: 2,
-        dañoGlifo: 76,
-        dañoVortice: 76,
-        dañoGolem: 76,
-        velocidadBala: 350,
-        dif: 'Difícil'
-    }
+    PISTOLA:  { nombre: 'Pistola',  balasMax: 6,  dañoGlifo: 20, dañoVortice: 20, dañoGolem: 10, velocidadBala: 450, dif: 'Fácil' },
+    RIFLE:    { nombre: 'Rifle',    balasMax: 15, dañoGlifo: 10, dañoVortice: 10, dañoGolem: 10, velocidadBala: 650, dif: 'Medio' },
+    ESCOPETA: { nombre: 'Escopeta', balasMax: 2,  dañoGlifo: 76, dañoVortice: 76, dañoGolem: 76, velocidadBala: 350, dif: 'Difícil' }
 };
 
 let armaActual = ARMAS.PISTOLA;
-let balasActuales = armaActual.balasMax;
-
+let balasActuales = maxBalas(armaActual);
 
 // ==================================================
 // BANCO DE PREGUNTAS
 // ==================================================
 
 const BANCO_PREGUNTAS = {
-
-    'Fácil': [
-
-        {
-            f: 'y = (3x - 1)⁵',
-
-            p1: {
-                q: 'Deriva la potencia externa:',
-
-                opciones: [
-                    'Z) 5(3x-1)⁴',
-                    'X) 5(3x-1)⁵',
-                    'C) (3x-1)⁴'
-                ],
-
-                correcta: 0
-            },
-
-            p2: {
-                q: 'Deriva lo interno (3x-1):',
-
-                opciones: [
-                    'Z) 3x',
-                    'X) 3',
-                    'C) 1'
-                ],
-
-                correcta: 1
-            }
-        }
-    ],
-
-    'Medio': [
-
-        {
-            f: 'y = cos(x³)',
-
-            p1: {
-                q: 'Deriva la trigonométrica externa:',
-
-                opciones: [
-                    'Z) sin(x³)',
-                    'X) -sin(x³)',
-                    'C) -cos(x³)'
-                ],
-
-                correcta: 1
-            },
-
-            p2: {
-                q: 'Deriva lo interno (x³):',
-
-                opciones: [
-                    'Z) 3x²',
-                    'X) 3x',
-                    'C) x²'
-                ],
-
-                correcta: 0
-            }
-        }
-    ],
-
-    'Difícil': [
-
-        {
-            f: 'y = ln(sin(x))',
-
-            p1: {
-                q: 'Deriva el logaritmo externo:',
-
-                opciones: [
-                    'Z) 1/x',
-                    'X) 1/sin(x)',
-                    'C) cos(x)'
-                ],
-
-                correcta: 1
-            },
-
-            p2: {
-                q: 'Deriva lo interno (sin(x)):',
-
-                opciones: [
-                    'Z) cos(x)',
-                    'X) -cos(x)',
-                    'C) 1/cos(x)'
-                ],
-
-                correcta: 0
-            }
-        }
-    ]
+    'Fácil': [{
+        f: 'y = (3x - 1)⁵',
+        p1: { q: 'Deriva la potencia externa:', opciones: ['Z) 5(3x-1)⁴', 'X) 5(3x-1)⁵', 'C) (3x-1)⁴'], correcta: 0 },
+        p2: { q: 'Deriva lo interno (3x-1):', opciones: ['Z) 3x', 'X) 3', 'C) 1'], correcta: 1 }
+    }],
+    'Medio': [{
+        f: 'y = cos(x³)',
+        p1: { q: 'Deriva la trigonométrica externa:', opciones: ['Z) sin(x³)', 'X) -sin(x³)', 'C) -cos(x³)'], correcta: 1 },
+        p2: { q: 'Deriva lo interno (x³):', opciones: ['Z) 3x²', 'X) 3x', 'C) x²'], correcta: 0 }
+    }],
+    'Difícil': [{
+        f: 'y = ln(sin(x))',
+        p1: { q: 'Deriva el logaritmo externo:', opciones: ['Z) 1/x', 'X) 1/sin(x)', 'C) cos(x)'], correcta: 1 },
+        p2: { q: 'Deriva lo interno (sin(x)):', opciones: ['Z) cos(x)', 'X) -cos(x)', 'C) 1/cos(x)'], correcta: 0 }
+    }]
 };
 
 let preguntaActual = null;
 let pasoActual = 1;
+let opcionesActuales = [];   // opciones del paso ya barajadas
+let correctaActual = 0;      // índice de la correcta tras barajar
 
-
-// ==================================================
-// PRELOAD
-// ==================================================
-
-function preload() {
-}
-
+function preload() {}
 
 // ==================================================
 // CREATE
@@ -308,405 +124,118 @@ function preload() {
 function create() {
 
     escenaJuego = this;
-
     this.input.setTopOnly(true);
 
+    this.physics.world.setBounds(0, 0, 2400, 2400);
 
-    // ==================================================
-    // MUNDO
-    // ==================================================
-
-    this.physics.world.setBounds(
-        0,
-        0,
-        2400,
-        2400
-    );
-
-
-    // ==================================================
-    // REJILLA
-    // ==================================================
-
+    // Rejilla
     let graphics = this.add.graphics();
-
-    graphics.lineStyle(
-        1,
-        0x333344,
-        1
-    );
-
-    for (
-        let x = 0;
-        x < 2400;
-        x += 80
-    ) {
-
-        graphics.moveTo(x, 0);
-        graphics.lineTo(x, 2400);
-    }
-
-    for (
-        let y = 0;
-        y < 2400;
-        y += 80
-    ) {
-
-        graphics.moveTo(0, y);
-        graphics.lineTo(2400, y);
-    }
-
+    graphics.lineStyle(1, 0x333344, 1);
+    for (let x = 0; x < 2400; x += 80) { graphics.moveTo(x, 0); graphics.lineTo(x, 2400); }
+    for (let y = 0; y < 2400; y += 80) { graphics.moveTo(0, y); graphics.lineTo(2400, y); }
     graphics.strokePath();
 
-
-    // ==================================================
-    // JUGADOR
-    // ==================================================
-
-    jugador = this.add.rectangle(
-        1200,
-        1200,
-        32,
-        32,
-        0x00ff00
-    );
-
+    // Jugador
+    jugador = this.add.rectangle(1200, 1200, 32, 32, 0x00ff00);
     this.physics.add.existing(jugador);
-
     jugador.body.setCollideWorldBounds(true);
 
+    // Cámara
+    this.cameras.main.setBounds(0, 0, 2400, 2400);
+    this.cameras.main.startFollow(jugador);
 
-    // ==================================================
-    // CÁMARA
-    // ==================================================
-
-    this.cameras.main.setBounds(
-        0,
-        0,
-        2400,
-        2400
-    );
-
-    this.cameras.main.startFollow(
-        jugador
-    );
-
-
-    // ==================================================
-    // GRUPOS
-    // ==================================================
-
+    // Grupos
     enemigos = this.physics.add.group();
-
     balas = this.physics.add.group();
+    proyectilesEnemigos = this.physics.add.group();
 
-    proyectilesEnemigos =
-        this.physics.add.group();
-
-
-    // ==================================================
-    // CONTROLES
-    // ==================================================
-
+    // Controles
     teclado = this.input.keyboard.addKeys({
-
-        ARRIBA:
-            Phaser.Input.Keyboard.KeyCodes.W,
-
-        ABAJO:
-            Phaser.Input.Keyboard.KeyCodes.S,
-
-        IZQUIERDA:
-            Phaser.Input.Keyboard.KeyCodes.A,
-
-        DERECHA:
-            Phaser.Input.Keyboard.KeyCodes.D,
-
-        UNO:
-            Phaser.Input.Keyboard.KeyCodes.ONE,
-
-        DOS:
-            Phaser.Input.Keyboard.KeyCodes.TWO,
-
-        TRES:
-            Phaser.Input.Keyboard.KeyCodes.THREE,
-
-        Z:
-            Phaser.Input.Keyboard.KeyCodes.Z,
-
-        X:
-            Phaser.Input.Keyboard.KeyCodes.X,
-
-        C:
-            Phaser.Input.Keyboard.KeyCodes.C
+        ARRIBA: Phaser.Input.Keyboard.KeyCodes.W,
+        ABAJO: Phaser.Input.Keyboard.KeyCodes.S,
+        IZQUIERDA: Phaser.Input.Keyboard.KeyCodes.A,
+        DERECHA: Phaser.Input.Keyboard.KeyCodes.D,
+        UNO: Phaser.Input.Keyboard.KeyCodes.ONE,
+        DOS: Phaser.Input.Keyboard.KeyCodes.TWO,
+        TRES: Phaser.Input.Keyboard.KeyCodes.THREE,
+        Z: Phaser.Input.Keyboard.KeyCodes.Z,
+        X: Phaser.Input.Keyboard.KeyCodes.X,
+        C: Phaser.Input.Keyboard.KeyCodes.C
     });
-
     mouse = this.input.activePointer;
 
+    // Colisiones
+    this.physics.add.overlap(balas, enemigos, impactarEnemigo, null, this);
+    this.physics.add.overlap(jugador, enemigos, contactoEnemigo, null, this);
+    this.physics.add.overlap(jugador, proyectilesEnemigos, impactoProyectilEnemigo, null, this);
+    this.physics.add.collider(enemigos, enemigos);   // los enemigos ya no se apilan
 
-    // ==================================================
-    // COLISIONES
-    // ==================================================
-
-    this.physics.add.overlap(
-        balas,
-        enemigos,
-        impactarEnemigo,
-        null,
-        this
-    );
-
-    this.physics.add.overlap(
-        jugador,
-        enemigos,
-        contactoEnemigo,
-        null,
-        this
-    );
-
-    this.physics.add.overlap(
-        jugador,
-        proyectilesEnemigos,
-        impactoProyectilEnemigo,
-        null,
-        this
-    );
-
-
-    // ==================================================
     // UI
-    // ==================================================
+    textoUI = this.add.text(20, 20, '', { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' })
+        .setScrollFactor(0).setDepth(20);
 
-    textoUI = this.add.text(
-        20,
-        20,
-        '',
-        {
-            fontSize: '18px',
-            fill: '#ffffff',
-            fontStyle: 'bold'
-        }
-    )
-    .setScrollFactor(0)
-    .setDepth(20);
+    textoRonda = this.add.text(780, 20, '', { fontSize: '22px', fill: '#ffff00', fontStyle: 'bold' })
+        .setOrigin(1, 0).setScrollFactor(0).setDepth(20);
 
+    crearBarraBoss(this);
 
-    textoRonda = this.add.text(
-        780,
-        20,
-        '',
-        {
-            fontSize: '22px',
-            fill: '#ffff00',
-            fontStyle: 'bold'
-        }
-    )
-    .setOrigin(1, 0)
-    .setScrollFactor(0)
-    .setDepth(20);
+    // Panel matemático
+    contenedorMatematicas = this.add.container(400, 450).setScrollFactor(0).setDepth(30);
 
+    fondoMat = this.add.rectangle(0, 0, 760, 300, 0x0b0b14, 0.98);
+    fondoMat.setStrokeStyle(3, 0xffaa00);
 
-    // ==================================================
-    // PANEL MATEMÁTICO
-    // ==================================================
-
-    contenedorMatematicas =
-        this.add.container(
-            400,
-            450
-        )
-        .setScrollFactor(0)
-        .setDepth(30);
-
-
-    fondoMat =
-        this.add.rectangle(
-            0,
-            0,
-            760,
-            300,
-            0x0b0b14,
-            0.98
-        );
-
-    fondoMat.setStrokeStyle(
-        3,
-        0xffaa00
-    );
-
-
-    textoTituloMat =
-        this.add.text(
-            -350,
-            -130,
-            '',
-            {
-                fontSize: '17px',
-                fill: '#ffcc00',
-                fontStyle: 'bold'
-            }
-        );
-
-
-    textoFuncionMat =
-        this.add.text(
-            -350,
-            -92,
-            '',
-            {
-                fontSize: '17px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        );
-
-
-    textoPreguntaMat =
-        this.add.text(
-            -350,
-            -55,
-            '',
-            {
-                fontSize: '16px',
-                fill: '#ffffff',
-                fontStyle: 'bold',
-                wordWrap: {
-                    width: 700
-                }
-            }
-        );
-
-
-    textoRespuesta1 =
-        this.add.text(
-            -325,
-            5,
-            '',
-            {
-                fontSize: '17px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        );
-
-
-    textoRespuesta2 =
-        this.add.text(
-            -325,
-            42,
-            '',
-            {
-                fontSize: '17px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        );
-
-
-    textoRespuesta3 =
-        this.add.text(
-            -325,
-            79,
-            '',
-            {
-                fontSize: '17px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        );
-
-
-    textoAyudaMat =
-        this.add.text(
-            -350,
-            120,
-            '',
-            {
-                fontSize: '15px',
-                fill: '#aaaaaa',
-                fontStyle: 'bold'
-            }
-        );
-
+    const estiloMat = { fontSize: '17px', fill: '#ffffff', fontStyle: 'bold' };
+    textoTituloMat = this.add.text(-350, -130, '', { fontSize: '17px', fill: '#ffcc00', fontStyle: 'bold' });
+    textoFuncionMat = this.add.text(-350, -92, '', estiloMat);
+    textoPreguntaMat = this.add.text(-350, -55, '', { fontSize: '16px', fill: '#ffffff', fontStyle: 'bold', wordWrap: { width: 700 } });
+    textoRespuesta1 = this.add.text(-325, 5, '', estiloMat);
+    textoRespuesta2 = this.add.text(-325, 42, '', estiloMat);
+    textoRespuesta3 = this.add.text(-325, 79, '', estiloMat);
+    textoAyudaMat = this.add.text(-350, 120, '', { fontSize: '15px', fill: '#aaaaaa', fontStyle: 'bold' });
 
     contenedorMatematicas.add([
-
-        fondoMat,
-
-        textoTituloMat,
-        textoFuncionMat,
-        textoPreguntaMat,
-
-        textoRespuesta1,
-        textoRespuesta2,
-        textoRespuesta3,
-
-        textoAyudaMat
+        fondoMat, textoTituloMat, textoFuncionMat, textoPreguntaMat,
+        textoRespuesta1, textoRespuesta2, textoRespuesta3, textoAyudaMat
     ]);
-
-
     contenedorMatematicas.setVisible(false);
 
-
-    // ==================================================
-    // TEMPORIZADOR
-    // ==================================================
-
+    // Temporizador
     this.time.addEvent({
-
         delay: 1000,
-
+        loop: true,
         callback: () => {
-
-            if (
-                partidaIniciada &&
-                tiempoLimite > 0 &&
-                !jugadorMuerto
-            ) {
+            if (partidaIniciada && !jugadorMuerto && !eligiendoMejora && tiempoLimite > 0) {
                 tiempoLimite--;
+                if (tiempoLimite <= 0) {
+                    actualizarUI();
+                    terminarPartida(true);   // sobrevivir hasta el final = victoria
+                    return;
+                }
             }
-
             actualizarUI();
-        },
-
-        loop: true
+        }
     });
 
-
-    // ==================================================
-    // DISPARO
-    // ==================================================
-
-    this.input.on(
-        'pointerdown',
-        () => {
-
-            if (partidaIniciada) {
-                disparar(this);
-            }
+    // Disparo (ignora el clic que acaba de pulsar un botón)
+    this.input.on('pointerdown', () => {
+        if (this.time.now - ultimoClickBoton < 150) {
+            return;
         }
-    );
+        if (partidaIniciada) {
+            disparar(this);
+        }
+    });
 
+    this.scale.on('resize', redimensionarInterfaz);
 
-    // ==================================================
-    // RESIZE
-    // ==================================================
-
-    this.scale.on(
-        'resize',
-        redimensionarInterfaz
-    );
-
-
-    // ==================================================
-    // MENÚ PRINCIPAL
-    // ==================================================
-
+    // Menús: se crean una sola vez y se alterna su visibilidad
     crearMenuPrincipal(this);
+    crearMenuControles(this);
+    crearMenuCreditos(this);
 
     redimensionarInterfaz();
 }
-
 
 // ==================================================
 // REDIMENSIONAR INTERFAZ
@@ -714,891 +243,307 @@ function create() {
 
 function redimensionarInterfaz() {
 
-    if (!escenaJuego) {
-        return;
-    }
+    if (!escenaJuego) { return; }
 
+    let ancho = escenaJuego.scale.width;
+    let alto = escenaJuego.scale.height;
 
-    let ancho =
-        escenaJuego.scale.width;
+    if (textoRonda) { textoRonda.x = ancho - 20; }
 
-    let alto =
-        escenaJuego.scale.height;
-
-
-    // ==================================================
-    // HUD
-    // ==================================================
-
-    if (textoRonda) {
-
-        textoRonda.x =
-            ancho - 20;
-    }
-
-
-    // ==================================================
-    // MENÚ PRINCIPAL
-    // ==================================================
-
-    if (menuPrincipal) {
-
-        menuPrincipal.setPosition(
-            ancho / 2,
-            alto / 2
-        );
-
-        let fondoMenu =
-            menuPrincipal.getAt(0);
-
-        if (fondoMenu) {
-
-            fondoMenu.setSize(
-                ancho,
-                alto
-            );
+    [menuPrincipal, menuControles, menuCreditos, pantallaFin, menuMejoras].forEach(menu => {
+        if (menu && menu.active) {
+            menu.setPosition(ancho / 2, alto / 2);
+            let fondo = menu.getAt(0);
+            if (fondo) { fondo.setSize(ancho, alto); }
         }
-    }
-
-
-    // ==================================================
-    // MENÚ CONTROLES
-    // ==================================================
-
-    if (menuControles) {
-
-        menuControles.setPosition(
-            ancho / 2,
-            alto / 2
-        );
-
-        let fondoControles =
-            menuControles.getAt(0);
-
-        if (fondoControles) {
-
-            fondoControles.setSize(
-                ancho,
-                alto
-            );
-        }
-    }
-
-
-    // ==================================================
-    // MENÚ CRÉDITOS
-    // ==================================================
-
-    if (menuCreditos) {
-
-        menuCreditos.setPosition(
-            ancho / 2,
-            alto / 2
-        );
-
-        let fondoCreditos =
-            menuCreditos.getAt(0);
-
-        if (fondoCreditos) {
-
-            fondoCreditos.setSize(
-                ancho,
-                alto
-            );
-        }
-    }
-
-
-    // ==================================================
-    // PANEL MATEMÁTICO
-    // ==================================================
+    });
 
     if (contenedorMatematicas) {
 
-        let panelAncho =
-            Math.min(
-                760,
-                ancho - 30
-            );
+        let panelAncho = Math.min(760, ancho - 30);
+        let y = Math.min(alto - 155, alto / 2 + 120);
+        y = Math.max(170, y);
 
-        let panelAlto = 300;
+        contenedorMatematicas.setPosition(ancho / 2, y);
+        fondoMat.setSize(panelAncho, 300);
 
-        let x =
-            ancho / 2;
+        let margen = -panelAncho / 2 + 20;
+        textoTituloMat.x = margen;
+        textoFuncionMat.x = margen;
+        textoPreguntaMat.x = margen;
+        textoRespuesta1.x = margen + 25;
+        textoRespuesta2.x = margen + 25;
+        textoRespuesta3.x = margen + 25;
+        textoAyudaMat.x = margen;
 
-        let y =
-            Math.min(
-                alto - 155,
-                alto / 2 + 120
-            );
-
-        y =
-            Math.max(
-                170,
-                y
-            );
-
-        contenedorMatematicas.setPosition(
-            x,
-            y
-        );
-
-
-        fondoMat.setSize(
-            panelAncho,
-            panelAlto
-        );
-
-
-        let margen =
-            -panelAncho / 2 + 20;
-
-
-        textoTituloMat.x =
-            margen;
-
-        textoFuncionMat.x =
-            margen;
-
-        textoPreguntaMat.x =
-            margen;
-
-        textoRespuesta1.x =
-            margen + 25;
-
-        textoRespuesta2.x =
-            margen + 25;
-
-        textoRespuesta3.x =
-            margen + 25;
-
-        textoAyudaMat.x =
-            margen;
-
-
-        textoPreguntaMat.setWordWrapWidth(
-            panelAncho - 40
-        );
+        textoPreguntaMat.setWordWrapWidth(panelAncho - 40);
     }
 }
-
 
 // ==================================================
 // UPDATE
 // ==================================================
 
-function update() {
+function update(time, delta) {
 
-    if (!partidaIniciada) {
-        return;
-    }
+    if (!partidaIniciada) { return; }
 
     if (jugadorMuerto) {
-
         jugador.body.setVelocity(0);
-
         return;
     }
-
 
     if (juegoCongelado) {
-
-        manejarRecarga();
-
+        this.physics.world.pause();   // congela todo conservando velocidades
+        if (eligiendoMejora) { manejarMenuMejoras(); } else { manejarRecarga(); }
         jugador.body.setVelocity(0);
-
-        enemigos.getChildren().forEach(
-            enemigo => {
-
-                enemigo.body.setVelocity(0);
-            }
-        );
-
-        proyectilesEnemigos.getChildren().forEach(
-            proyectil => {
-
-                proyectil.body.setVelocity(0);
-            }
-        );
-
         return;
     }
 
+    if (this.physics.world.isPaused) { this.physics.world.resume(); }
 
-    // ==================================================
-    // CAMBIO DE ARMAS
-    // ==================================================
+    reloj += delta;   // reloj de juego: no avanza mientras el juego está congelado
 
-    if (
-        Phaser.Input.Keyboard.JustDown(
-            teclado.UNO
-        )
-    ) {
+    // Cambio de armas
+    if (Phaser.Input.Keyboard.JustDown(teclado.UNO)) { cambiarArma(ARMAS.PISTOLA); }
+    if (Phaser.Input.Keyboard.JustDown(teclado.DOS)) { cambiarArma(ARMAS.RIFLE); }
+    if (Phaser.Input.Keyboard.JustDown(teclado.TRES)) { cambiarArma(ARMAS.ESCOPETA); }
 
-        cambiarArma(
-            ARMAS.PISTOLA
-        );
-    }
-
-    if (
-        Phaser.Input.Keyboard.JustDown(
-            teclado.DOS
-        )
-    ) {
-
-        cambiarArma(
-            ARMAS.RIFLE
-        );
-    }
-
-    if (
-        Phaser.Input.Keyboard.JustDown(
-            teclado.TRES
-        )
-    ) {
-
-        cambiarArma(
-            ARMAS.ESCOPETA
-        );
-    }
-
-
-    // ==================================================
-    // MOVIMIENTO
-    // ==================================================
-
+    // Movimiento
     jugador.body.setVelocity(0);
+    let velocidad = 300 * velMult;
 
-    let velocidad = 300;
+    if (teclado.IZQUIERDA.isDown) { jugador.body.setVelocityX(-velocidad); }
+    else if (teclado.DERECHA.isDown) { jugador.body.setVelocityX(velocidad); }
 
-    if (teclado.IZQUIERDA.isDown) {
+    if (teclado.ARRIBA.isDown) { jugador.body.setVelocityY(-velocidad); }
+    else if (teclado.ABAJO.isDown) { jugador.body.setVelocityY(velocidad); }
 
-        jugador.body.setVelocityX(
-            -velocidad
-        );
+    actualizarEspeciales(this);
+    actualizarExplosionesBoss(this);
+    actualizarEtiquetas();
+    actualizarBarraBoss();
 
-    } else if (teclado.DERECHA.isDown) {
+    // Enemigos
+    enemigos.getChildren().forEach(enemigo => {
 
-        jugador.body.setVelocityX(
-            velocidad
-        );
-    }
+        if (enemigo.tipo === 'Glifo') {
 
-    if (teclado.ARRIBA.isDown) {
+            this.physics.moveToObject(enemigo, jugador, 160);
 
-        jugador.body.setVelocityY(
-            -velocidad
-        );
+        } else if (enemigo.tipo === 'Golem') {
 
-    } else if (teclado.ABAJO.isDown) {
+            this.physics.moveToObject(enemigo, jugador, 50);
 
-        jugador.body.setVelocityY(
-            velocidad
-        );
-    }
-
-
-    // ==================================================
-    // ENEMIGOS
-    // ==================================================
-
-    enemigos.getChildren().forEach(
-        enemigo => {
-
-            if (
-                enemigo.tipo === 'Glifo'
-            ) {
-
-                this.physics.moveToObject(
-                    enemigo,
-                    jugador,
-                    160
-                );
-
-            } else if (
-                enemigo.tipo === 'Golem'
-            ) {
-
-                this.physics.moveToObject(
-                    enemigo,
-                    jugador,
-                    50
-                );
-
-                if (
-                    !enemigo.ultimoMinigolem ||
-                    this.time.now -
-                    enemigo.ultimoMinigolem >=
-                    10000
-                ) {
-
-                    if (
-                        enemigo.minigolemsActivos < 4
-                    ) {
-
-                        crearMiniGolems(
-                            this,
-                            enemigo
-                        );
-
-                        enemigo.ultimoMinigolem =
-                            this.time.now;
-                    }
-                }
-
-            } else if (
-                enemigo.tipo === 'Minigolem'
-            ) {
-
-                this.physics.moveToObject(
-                    enemigo,
-                    jugador,
-                    220
-                );
-
-            } else if (
-                enemigo.tipo === 'Vortice'
-            ) {
-
-                let distancia =
-                    Phaser.Math.Distance.Between(
-                        enemigo.x,
-                        enemigo.y,
-                        jugador.x,
-                        jugador.y
-                    );
-
-                if (distancia > 350) {
-
-                    this.physics.moveToObject(
-                        enemigo,
-                        jugador,
-                        80
-                    );
-
-                } else {
-
-                    enemigo.body.setVelocity(0);
-                }
-
-
-                if (
-                    !enemigo.ultimoDisparo ||
-                    this.time.now -
-                    enemigo.ultimoDisparo >=
-                    2000
-                ) {
-
-                    dispararProyectilVortice(
-                        this,
-                        enemigo
-                    );
-
-                    enemigo.ultimoDisparo =
-                        this.time.now;
+            if (!enemigo.ultimoMinigolem || this.time.now - enemigo.ultimoMinigolem >= 10000) {
+                if (enemigo.minigolemsActivos < 4) {
+                    crearMiniGolems(this, enemigo);
+                    enemigo.ultimoMinigolem = this.time.now;
                 }
             }
+
+        } else if (enemigo.tipo === 'Minigolem') {
+
+            this.physics.moveToObject(enemigo, jugador, 220);
+
+        } else if (enemigo.tipo === 'Boss') {
+
+            enemigo.def.comportamiento(this, enemigo);
+
+        } else if (enemigo.tipo === 'Limite') {
+
+            comportamientoLimite(this, enemigo);
+
+        } else if (enemigo.tipo === 'Vortice') {
+
+            let distancia = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, jugador.x, jugador.y);
+
+            if (distancia > 350) {
+                this.physics.moveToObject(enemigo, jugador, 80);
+            } else {
+                enemigo.body.setVelocity(0);
+            }
+
+            if (!enemigo.ultimoDisparo || this.time.now - enemigo.ultimoDisparo >= 2000) {
+                dispararProyectilVortice(this, enemigo);
+                enemigo.ultimoDisparo = this.time.now;
+            }
         }
-    );
+    });
 }
 
-
 // ==================================================
-// MENÚ PRINCIPAL
+// MENÚS
 // ==================================================
 
 function crearMenuPrincipal(escena) {
 
-    menuPrincipal =
-        escena.add.container(
-            escena.scale.width / 2,
-            escena.scale.height / 2
-        )
-        .setScrollFactor(0)
-        .setDepth(100);
+    menuPrincipal = escena.add.container(escena.scale.width / 2, escena.scale.height / 2)
+        .setScrollFactor(0).setDepth(100);
 
+    let fondo = escena.add.rectangle(0, 0, escena.scale.width, escena.scale.height, 0x080810, 0.97);
 
-    let fondo =
-        escena.add.rectangle(
-            0,
-            0,
-            escena.scale.width,
-            escena.scale.height,
-            0x080810,
-            0.97
-        );
+    let titulo = escena.add.text(0, -190, 'CALABOZO DE LA CADENA', {
+        fontSize: '42px', fill: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8
+    }).setOrigin(0.5);
 
+    let subtitulo = escena.add.text(0, -140, 'SUPERVIVENCIA INFINITA', {
+        fontSize: '16px', fill: '#aaaaaa', fontStyle: 'bold'
+    }).setOrigin(0.5);
 
-    let titulo =
-        escena.add.text(
-            0,
-            -190,
-            'CALABOZO DE LA CADENA',
-            {
-                fontSize: '42px',
-                fill: '#ffffff',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 8
-            }
-        )
-        .setOrigin(0.5);
+    let botonJugar = crearBoton(escena, 0, -60, '▶  JUGAR', () => iniciarPartida());
+    let botonControles = crearBoton(escena, 0, 20, '🎮  CONTROLES', () => {
+        menuPrincipal.setVisible(false);
+        menuControles.setVisible(true);
+    });
+    let botonCreditos = crearBoton(escena, 0, 100, '📜  CRÉDITOS', () => {
+        menuPrincipal.setVisible(false);
+        menuCreditos.setVisible(true);
+    });
 
-
-    let subtitulo =
-        escena.add.text(
-            0,
-            -140,
-            'SUPERVIVENCIA INFINITA',
-            {
-                fontSize: '16px',
-                fill: '#aaaaaa',
-                fontStyle: 'bold'
-            }
-        )
-        .setOrigin(0.5);
-
-
-    let botonJugar =
-        crearBoton(
-            escena,
-            0,
-            -60,
-            '▶  JUGAR',
-            () => {
-                iniciarPartida();
-            }
-        );
-
-
-    let botonControles =
-        crearBoton(
-            escena,
-            0,
-            20,
-            '🎮  CONTROLES',
-            () => {
-                mostrarControles();
-            }
-        );
-
-
-    let botonCreditos =
-        crearBoton(
-            escena,
-            0,
-            100,
-            '📜  CRÉDITOS',
-            () => {
-                mostrarCreditos();
-            }
-        );
-
-
-    menuPrincipal.add([
-
-        fondo,
-        titulo,
-        subtitulo,
-        botonJugar,
-        botonControles,
-        botonCreditos
-    ]);
+    menuPrincipal.add([fondo, titulo, subtitulo, botonJugar, botonControles, botonCreditos]);
 }
 
+function crearMenuControles(escena) {
+
+    menuControles = escena.add.container(escena.scale.width / 2, escena.scale.height / 2)
+        .setScrollFactor(0).setDepth(110);
+
+    let fondo = escena.add.rectangle(0, 0, escena.scale.width, escena.scale.height, 0x080810, 0.98);
+
+    let titulo = escena.add.text(0, -210, 'CONTROLES', {
+        fontSize: '40px', fill: '#ffffff', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    let controles = escena.add.text(0, -90,
+        'MOVIMIENTO\n\n' +
+        'W  →  Arriba\nA  →  Izquierda\nS  →  Abajo\nD  →  Derecha\n\n' +
+        'COMBATE\n\nClick izquierdo  →  Disparar\n\n' +
+        'ARMAS\n\n1  →  Pistola\n2  →  Rifle\n3  →  Escopeta\n\n' +
+        'RECARGA\n\nZ / X / C  →  Responder preguntas',
+        { fontSize: '19px', fill: '#ffffff', align: 'center', lineSpacing: 5 }
+    ).setOrigin(0.5);
+
+    let volver = crearBoton(escena, 0, 210, '← VOLVER', () => {
+        menuControles.setVisible(false);
+        menuPrincipal.setVisible(true);
+    });
+
+    menuControles.add([fondo, titulo, controles, volver]);
+    menuControles.setVisible(false);
+}
+
+function crearMenuCreditos(escena) {
+
+    menuCreditos = escena.add.container(escena.scale.width / 2, escena.scale.height / 2)
+        .setScrollFactor(0).setDepth(110);
+
+    let fondo = escena.add.rectangle(0, 0, escena.scale.width, escena.scale.height, 0x080810, 0.98);
+
+    let titulo = escena.add.text(0, -180, 'CRÉDITOS', {
+        fontSize: '40px', fill: '#ffffff', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    let texto = escena.add.text(0, -60,
+        'CALABOZO DE LA CADENA\n\n' +
+        'Juego de supervivencia por oleadas.\n\n' +
+        'Combate + Matemáticas + Supervivencia\n\n' +
+        'Proyecto académico',
+        { fontSize: '20px', fill: '#ffffff', align: 'center', lineSpacing: 10 }
+    ).setOrigin(0.5);
+
+    let volver = crearBoton(escena, 0, 170, '← VOLVER', () => {
+        menuCreditos.setVisible(false);
+        menuPrincipal.setVisible(true);
+    });
+
+    menuCreditos.add([fondo, titulo, texto, volver]);
+    menuCreditos.setVisible(false);
+}
 
 // ==================================================
-// CREAR BOTÓN
+// BOTÓN
 // ==================================================
 
-function crearBoton(
-    escena,
-    x,
-    y,
-    texto,
-    accion
-) {
+function crearBoton(escena, x, y, texto, accion) {
 
-    let boton =
-        escena.add.container(
-            x,
-            y
-        )
-        .setScrollFactor(0)
-        .setDepth(101);
+    let boton = escena.add.container(x, y).setScrollFactor(0).setDepth(101);
 
+    let fondoBoton = escena.add.rectangle(0, 0, 300, 60, 0x252538, 1).setOrigin(0.5);
+    let textoBoton = escena.add.text(0, 0, texto, { fontSize: '25px', fill: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
 
-    let fondoBoton =
-        escena.add.rectangle(
-            0,
-            0,
-            300,
-            60,
-            0x252538,
-            1
-        )
-        .setOrigin(0.5);
+    boton.add([fondoBoton, textoBoton]);
+    boton.setSize(300, 60);
 
+    boton.setInteractive(new Phaser.Geom.Rectangle(-150, -30, 300, 60), Phaser.Geom.Rectangle.Contains);
+    boton.input.cursor = 'pointer';
 
-    let textoBoton =
-        escena.add.text(
-            0,
-            0,
-            texto,
-            {
-                fontSize: '25px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        )
-        .setOrigin(0.5);
+    boton.on('pointerover', () => {
+        fondoBoton.setFillStyle(0x383850);
+        textoBoton.setStyle({ fill: '#ffff00' });
+    });
 
+    boton.on('pointerout', () => {
+        fondoBoton.setFillStyle(0x252538);
+        textoBoton.setStyle({ fill: '#ffffff' });
+    });
 
-    boton.add([
-        fondoBoton,
-        textoBoton
-    ]);
+    boton.on('pointerdown', (pointer, localX, localY, event) => {
 
+        // Un botón dentro de un contenedor oculto no debe responder
+        if (boton.parentContainer && !boton.parentContainer.visible) { return; }
 
-    boton.setSize(
-        300,
-        60
-    );
+        if (event) { event.stopPropagation(); }
 
-
-    boton.setInteractive(
-        new Phaser.Geom.Rectangle(
-            -150,
-            -30,
-            300,
-            60
-        ),
-        Phaser.Geom.Rectangle.Contains
-    );
-
-
-    boton.input.cursor =
-        'pointer';
-
-
-    boton.on(
-        'pointerover',
-        () => {
-
-            fondoBoton.setFillStyle(
-                0x383850
-            );
-
-            textoBoton.setStyle({
-                fill: '#ffff00'
-            });
-        }
-    );
-
-
-    boton.on(
-        'pointerout',
-        () => {
-
-            fondoBoton.setFillStyle(
-                0x252538
-            );
-
-            textoBoton.setStyle({
-                fill: '#ffffff'
-            });
-        }
-    );
-
-
-    boton.on(
-        'pointerdown',
-        (
-            pointer,
-            localX,
-            localY,
-            event
-        ) => {
-
-            if (event) {
-                event.stopPropagation();
-            }
-
-            accion();
-        }
-    );
-
+        ultimoClickBoton = escena.time.now;   // el listener global ignora este clic
+        accion();
+    });
 
     return boton;
 }
 
-
 // ==================================================
-// INICIAR PARTIDA
+// INICIAR / REINICIAR PARTIDA
 // ==================================================
 
 function iniciarPartida() {
 
+    partidaId++;
     partidaIniciada = true;
+    resetMejoras();
+    puntos = 0;
+    limpiarBoss();
 
     menuPrincipal.setVisible(false);
 
-    vidaJugador =
-        vidaMaxima;
+    if (pantallaFin) {
+        pantallaFin.destroy();
+        pantallaFin = null;
+    }
 
+    vidaJugador = vidaMaxima;
     jugadorMuerto = false;
-
     invulnerable = false;
-
+    juegoCongelado = false;
+    preguntaActual = null;
     rondaActual = 1;
-
     generandoNuevaRonda = false;
+    tiempoLimite = TIEMPO_PARTIDA;
+    armaActual = ARMAS.PISTOLA;
+    balasActuales = maxBalas(armaActual);
 
-    tiempoLimite = 900;
+    contenedorMatematicas.setVisible(false);
 
-    armaActual =
-        ARMAS.PISTOLA;
-
-    balasActuales =
-        armaActual.balasMax;
-
-
-    jugador.setPosition(
-        1200,
-        1200
-    );
-
+    jugador.setPosition(1200, 1200);
     jugador.setAlpha(1);
 
+    enemigos.clear(true, true);
+    proyectilesEnemigos.clear(true, true);
+    balas.clear(true, true);
 
-    enemigos.clear(
-        true,
-        true
-    );
-
-    proyectilesEnemigos.clear(
-        true,
-        true
-    );
-
-    balas.clear(
-        true,
-        true
-    );
-
-
-    iniciarRonda(
-        escenaJuego
-    );
-
+    iniciarRonda(escenaJuego);
     actualizarUI();
 }
-
-
-// ==================================================
-// CONTROLES
-// ==================================================
-
-function mostrarControles() {
-
-    menuPrincipal.setVisible(false);
-
-    menuControles =
-        escenaJuego.add.container(
-            escenaJuego.scale.width / 2,
-            escenaJuego.scale.height / 2
-        )
-        .setScrollFactor(0)
-        .setDepth(110);
-
-
-    let fondo =
-        escenaJuego.add.rectangle(
-            0,
-            0,
-            escenaJuego.scale.width,
-            escenaJuego.scale.height,
-            0x080810,
-            0.98
-        );
-
-
-    let titulo =
-        escenaJuego.add.text(
-            0,
-            -210,
-            'CONTROLES',
-            {
-                fontSize: '40px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        )
-        .setOrigin(0.5);
-
-
-    let controles =
-        escenaJuego.add.text(
-            0,
-            -90,
-
-            'MOVIMIENTO\n\n' +
-
-            'W  →  Arriba\n' +
-            'A  →  Izquierda\n' +
-            'S  →  Abajo\n' +
-            'D  →  Derecha\n\n' +
-
-            'COMBATE\n\n' +
-
-            'Click izquierdo  →  Disparar\n\n' +
-
-            'ARMAS\n\n' +
-
-            '1  →  Pistola\n' +
-            '2  →  Rifle\n' +
-            '3  →  Escopeta\n\n' +
-
-            'RECARGA\n\n' +
-
-            'Z / X / C  →  Responder preguntas',
-
-            {
-                fontSize: '19px',
-                fill: '#ffffff',
-                align: 'center',
-                lineSpacing: 5
-            }
-        )
-        .setOrigin(0.5);
-
-
-    let volver =
-        crearBoton(
-            escenaJuego,
-            0,
-            210,
-            '← VOLVER',
-            () => {
-
-                menuControles.destroy();
-
-                menuControles = null;
-
-                menuPrincipal.setVisible(true);
-
-                redimensionarInterfaz();
-            }
-        );
-
-
-    menuControles.add([
-        fondo,
-        titulo,
-        controles,
-        volver
-    ]);
-
-
-    redimensionarInterfaz();
-}
-
-
-// ==================================================
-// CRÉDITOS
-// ==================================================
-
-function mostrarCreditos() {
-
-    menuPrincipal.setVisible(false);
-
-    menuCreditos =
-        escenaJuego.add.container(
-            escenaJuego.scale.width / 2,
-            escenaJuego.scale.height / 2
-        )
-        .setScrollFactor(0)
-        .setDepth(110);
-
-
-    let fondo =
-        escenaJuego.add.rectangle(
-            0,
-            0,
-            escenaJuego.scale.width,
-            escenaJuego.scale.height,
-            0x080810,
-            0.98
-        );
-
-
-    let titulo =
-        escenaJuego.add.text(
-            0,
-            -180,
-            'CRÉDITOS',
-            {
-                fontSize: '40px',
-                fill: '#ffffff',
-                fontStyle: 'bold'
-            }
-        )
-        .setOrigin(0.5);
-
-
-    let texto =
-        escenaJuego.add.text(
-            0,
-            -60,
-
-            'CALABOZO DE LA CADENA\n\n' +
-
-            'Juego de supervivencia por oleadas.\n\n' +
-
-            'Combate + Matemáticas + Supervivencia\n\n' +
-
-            'Proyecto académico',
-
-            {
-                fontSize: '20px',
-                fill: '#ffffff',
-                align: 'center',
-                lineSpacing: 10
-            }
-        )
-        .setOrigin(0.5);
-
-
-    let volver =
-        crearBoton(
-            escenaJuego,
-            0,
-            170,
-            '← VOLVER',
-            () => {
-
-                menuCreditos.destroy();
-
-                menuCreditos = null;
-
-                menuPrincipal.setVisible(true);
-
-                redimensionarInterfaz();
-            }
-        );
-
-
-    menuCreditos.add([
-        fondo,
-        titulo,
-        texto,
-        volver
-    ]);
-
-
-    redimensionarInterfaz();
-}
-
 
 // ==================================================
 // RONDAS
@@ -1608,1082 +553,1755 @@ function iniciarRonda(escena) {
 
     generandoNuevaRonda = true;
 
+    if (regenRonda > 0 && rondaActual > 1) {
+        vidaJugador = Math.min(vidaMaxima, vidaJugador + regenRonda);
+    }
+
     let cantidadGlifos = 0;
     let cantidadVortices = 0;
     let cantidadGolems = 0;
 
-
     if (rondaActual === 1) {
-
         cantidadGlifos = 5;
-
     } else if (rondaActual === 2) {
-
         cantidadVortices = 4;
-
     } else if (rondaActual === 3) {
-
         cantidadGlifos = 6;
         cantidadVortices = 4;
-
     } else if (rondaActual === 4) {
-
         cantidadGolems = 3;
-
     } else {
-
-        let aumento =
-            rondaActual - 5;
-
-        cantidadGlifos =
-            6 + aumento * 2;
-
-        cantidadVortices =
-            4 + aumento;
-
-        cantidadGolems =
-            2 +
-            Math.floor(
-                aumento / 2
-            );
+        let aumento = rondaActual - 5;
+        cantidadGlifos = 6 + aumento * 2;
+        cantidadVortices = 4 + aumento;
+        cantidadGolems = 2 + Math.floor(aumento / 2);
     }
 
-
-    for (
-        let i = 0;
-        i < cantidadGlifos;
-        i++
-    ) {
-
-        crearEnemigo(
-            escena,
-            'Glifo',
-            0x00ffff,
-            20
-        );
+    if (rondaActual % 5 === 0) {
+        cantidadGlifos = 0;
+        cantidadVortices = 0;
+        cantidadGolems = 0;
+        crearBoss(escena);
     }
 
-
-    for (
-        let i = 0;
-        i < cantidadVortices;
-        i++
-    ) {
-
-        crearEnemigo(
-            escena,
-            'Vortice',
-            0xff00ff,
-            20
-        );
-    }
-
-
-    for (
-        let i = 0;
-        i < cantidadGolems;
-        i++
-    ) {
-
-        crearEnemigo(
-            escena,
-            'Golem',
-            0xff5500,
-            150
-        );
-    }
-
+    for (let i = 0; i < cantidadGlifos; i++) { crearEnemigo(escena, 'Glifo', 0x00ffff, 20); }
+    for (let i = 0; i < cantidadVortices; i++) { crearEnemigo(escena, 'Vortice', 0xff00ff, 20); }
+    for (let i = 0; i < cantidadGolems; i++) { crearEnemigo(escena, 'Golem', 0xff5500, 150); }
 
     generandoNuevaRonda = false;
 
     mostrarRonda();
-
     actualizarUI();
 }
 
-
-// ==================================================
-// MOSTRAR RONDA
-// ==================================================
-
 function mostrarRonda() {
 
-    if (!textoRonda) {
-        return;
-    }
+    if (!textoRonda) { return; }
 
-    textoRonda.setText(
-        `RONDA ${rondaActual}`
-    );
-
+    textoRonda.setText(`RONDA ${rondaActual}`);
     textoRonda.setAlpha(1);
 
     escenaJuego.tweens.add({
-
         targets: textoRonda,
-
         alpha: 0.35,
-
         duration: 700,
-
         yoyo: true,
-
         repeat: 2
     });
 }
 
-
-// ==================================================
-// FIN DE RONDA
-// ==================================================
-
 function comprobarFinRonda() {
 
-    if (
-        jugadorMuerto ||
-        generandoNuevaRonda
-    ) {
-        return;
-    }
+    if (jugadorMuerto || generandoNuevaRonda) { return; }
 
-
-    let enemigosVivos =
-        enemigos.countActive(true);
-
-
-    if (
-        enemigosVivos <= 0
-    ) {
+    if (enemigos.countActive(true) <= 0) {
 
         generandoNuevaRonda = true;
+        let idPartida = partidaId;
 
-        escenaJuego.time.delayedCall(
-            1000,
-            () => {
+        escenaJuego.time.delayedCall(1000, () => {
 
-                if (jugadorMuerto) {
-                    return;
-                }
+            if (jugadorMuerto || idPartida !== partidaId) { return; }
 
-                rondaActual++;
-
-                iniciarRonda(
-                    escenaJuego
-                );
-            }
-        );
+            mostrarMenuMejoras();
+        });
     }
 }
 
-
 // ==================================================
-// CREAR ENEMIGO
+// ENEMIGOS
 // ==================================================
 
-function crearEnemigo(
-    escena,
-    tipo,
-    color,
-    hp
-) {
+function crearEnemigo(escena, tipo, color, hp, tamañoCustom) {
 
-    let x;
-    let y;
-    let distanciaJugador;
-
+    let x, y, distanciaJugador;
 
     do {
+        x = Phaser.Math.Between(100, 2300);
+        y = Phaser.Math.Between(100, 2300);
+        distanciaJugador = Phaser.Math.Distance.Between(x, y, jugador.x, jugador.y);
+    } while (distanciaJugador < 400);
 
-        x =
-            Phaser.Math.Between(
-                100,
-                2300
-            );
+    let tamaño = tamañoCustom || (tipo === 'Boss' ? 96 : (tipo === 'Golem' ? 48 : (tipo === 'Minigolem' ? 18 : 24)));
 
-        y =
-            Phaser.Math.Between(
-                100,
-                2300
-            );
+    let enemigo = escena.add.rectangle(x, y, tamaño, tamaño, color);
+    escena.physics.add.existing(enemigo);
 
-        distanciaJugador =
-            Phaser.Math.Distance.Between(
-                x,
-                y,
-                jugador.x,
-                jugador.y
-            );
+    enemigo.tipo = tipo;
+    enemigo.hp = hp;
+    enemigo.ultimoDisparo = 0;
+    enemigo.ultimoMinigolem = 0;
+    enemigo.minigolemsActivos = 0;
 
-    } while (
-        distanciaJugador < 400
-    );
+    enemigos.add(enemigo);
 
-
-    let tamaño;
-
-    if (tipo === 'Golem') {
-        tamaño = 48;
-    } else if (tipo === 'Minigolem') {
-        tamaño = 18;
-    } else {
-        tamaño = 24;
-    }
-
-
-    let enemigo =
-        escena.add.rectangle(
-            x,
-            y,
-            tamaño,
-            tamaño,
-            color
-        );
-
-
-    escena.physics.add.existing(
-        enemigo
-    );
-
-
-    enemigo.tipo =
-        tipo;
-
-    enemigo.hp =
-        hp;
-
-    enemigo.ultimoDisparo =
-        0;
-
-    enemigo.ultimoMinigolem =
-        0;
-
-    enemigo.minigolemsActivos =
-        0;
-
-
-    enemigos.add(
-        enemigo
-    );
+    return enemigo;
 }
 
+function crearMiniGolems(escena, golem) {
 
-// ==================================================
-// CREAR MINIGOLEMS
-// ==================================================
+    let cantidad = Math.min(2, 4 - golem.minigolemsActivos);
 
-function crearMiniGolems(
-    escena,
-    golem
-) {
+    for (let i = 0; i < cantidad; i++) {
 
-    let cantidad =
-        Math.min(
-            2,
-            4 - golem.minigolemsActivos
-        );
+        let angulo = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        let x = Phaser.Math.Clamp(golem.x + Math.cos(angulo) * 70, 50, 2350);
+        let y = Phaser.Math.Clamp(golem.y + Math.sin(angulo) * 70, 50, 2350);
 
-    for (
-        let i = 0;
-        i < cantidad;
-        i++
-    ) {
+        let minigolem = escena.add.rectangle(x, y, 18, 18, 0xff8844);
+        escena.physics.add.existing(minigolem);
 
-        let angulo =
-            Phaser.Math.FloatBetween(
-                0,
-                Math.PI * 2
-            );
+        minigolem.tipo = 'Minigolem';
+        minigolem.hp = 20;
+        minigolem.ultimoDisparo = 0;
+        minigolem.ultimoMinigolem = 0;
+        minigolem.minigolemsActivos = 0;
+        minigolem.golemPadre = golem;
 
-        let distancia = 70;
-
-        let x =
-            golem.x +
-            Math.cos(angulo) *
-            distancia;
-
-        let y =
-            golem.y +
-            Math.sin(angulo) *
-            distancia;
-
-        x = Phaser.Math.Clamp(
-            x,
-            50,
-            2350
-        );
-
-        y = Phaser.Math.Clamp(
-            y,
-            50,
-            2350
-        );
-
-        let minigolem =
-            escena.add.rectangle(
-                x,
-                y,
-                18,
-                18,
-                0xff8844
-            );
-
-        escena.physics.add.existing(
-            minigolem
-        );
-
-        minigolem.tipo =
-            'Minigolem';
-
-        minigolem.hp =
-            20;
-
-        minigolem.ultimoDisparo =
-            0;
-
-        minigolem.ultimoMinigolem =
-            0;
-
-        minigolem.minigolemsActivos =
-            0;
-
-        minigolem.golemPadre =
-            golem;
-
-        enemigos.add(
-            minigolem
-        );
-
+        enemigos.add(minigolem);
         golem.minigolemsActivos++;
     }
 }
 
-
 // ==================================================
-// DISPARAR
+// DISPAROS
 // ==================================================
 
 function disparar(escena) {
 
-    if (
-        juegoCongelado ||
-        jugadorMuerto ||
-        !partidaIniciada
-    ) {
-        return;
-    }
+    if (juegoCongelado || jugadorMuerto || !partidaIniciada) { return; }
 
-
-    if (
-        balasActuales <= 0
-    ) {
-
+    if (balasActuales <= 0) {
         iniciarRecarga();
-
         return;
     }
-
 
     balasActuales--;
-
     actualizarUI();
 
+    const puntoMundo = escena.cameras.main.getWorldPoint(mouse.x, mouse.y);
 
-    let bala =
-        escena.add.circle(
-            jugador.x,
-            jugador.y,
-            6,
-            0xffff00
-        );
+    lanzarSalva(escena, jugador.x, jugador.y, puntoMundo.x, puntoMundo.y);
 
-
-    escena.physics.add.existing(
-        bala
-    );
-
-
-    balas.add(
-        bala
-    );
-
-
-    const puntoMundo =
-        escena.cameras.main.getWorldPoint(
-            mouse.x,
-            mouse.y
-        );
-
-
-    const angulo =
-        Phaser.Math.Angle.Between(
-            jugador.x,
-            jugador.y,
-            puntoMundo.x,
-            puntoMundo.y
-        );
-
-
-    escena.physics.velocityFromRotation(
-        angulo,
-        armaActual.velocidadBala,
-        bala.body.velocity
-    );
+    // La doble sombra dispara lo mismo que el jugador
+    if (especialesObj.sombra) {
+        lanzarSalva(escena, especialesObj.sombra.x, especialesObj.sombra.y, puntoMundo.x, puntoMundo.y);
+    }
 }
 
+// Una salva = 1 bala (o 3 con Multidisparo, cada una al 60% de daño)
+function lanzarSalva(escena, x, y, objetivoX, objetivoY) {
 
-// ==================================================
-// PROYECTIL DEL VÓRTICE
-// ==================================================
+    let angulo = Phaser.Math.Angle.Between(x, y, objetivoX, objetivoY);
 
-function dispararProyectilVortice(
-    escena,
-    vortice
-) {
-
-    if (
-        juegoCongelado ||
-        jugadorMuerto
-    ) {
-        return;
+    if (tiene('multidisparo')) {
+        [-0.22, 0, 0.22].forEach(d => crearBala(escena, x, y, angulo + d, armaActual, 0.6));
+    } else {
+        crearBala(escena, x, y, angulo, armaActual, 1);
     }
+}
 
+function crearBala(escena, x, y, angulo, arma, factor, color) {
 
-    let proyectil =
-        escena.add.circle(
-            vortice.x,
-            vortice.y,
-            7,
-            0xff00ff
-        );
+    let bala = escena.add.circle(x, y, 6, color || 0xffff00);
+    escena.physics.add.existing(bala);
+    balas.add(bala);
 
+    bala.arma = arma;
+    bala.factor = factor || 1;
+    bala.golpeados = new Set();
 
-    escena.physics.add.existing(
-        proyectil
-    );
+    escena.physics.velocityFromRotation(angulo, arma.velocidadBala, bala.body.velocity);
 
+    // Evita acumular balas que nunca chocan
+    escena.time.delayedCall(2500, () => {
+        if (bala && bala.active) { bala.destroy(); }
+    });
 
-    proyectilesEnemigos.add(
-        proyectil
-    );
+    return bala;
+}
 
+function dispararProyectilVortice(escena, vortice) {
 
-    let angulo =
-        Phaser.Math.Angle.Between(
-            vortice.x,
-            vortice.y,
-            jugador.x,
-            jugador.y
-        );
+    if (juegoCongelado || jugadorMuerto) { return; }
 
+    let proyectil = escena.add.circle(vortice.x, vortice.y, 7, 0xff00ff);
+    escena.physics.add.existing(proyectil);
+    proyectilesEnemigos.add(proyectil);
 
-    escena.physics.velocityFromRotation(
-        angulo,
-        220,
-        proyectil.body.velocity
-    );
-
+    let angulo = Phaser.Math.Angle.Between(vortice.x, vortice.y, jugador.x, jugador.y);
+    escena.physics.velocityFromRotation(angulo, 220, proyectil.body.velocity);
 
     proyectil.daño = 10;
 
-
-    escena.time.delayedCall(
-        5000,
-        () => {
-
-            if (
-                proyectil &&
-                proyectil.active
-            ) {
-
-                proyectil.destroy();
-            }
-        }
-    );
+    escena.time.delayedCall(5000, () => {
+        if (proyectil && proyectil.active) { proyectil.destroy(); }
+    });
 }
 
-
 // ==================================================
-// CONTACTO ENEMIGO
+// DAÑO
 // ==================================================
 
-function contactoEnemigo(
-    jugadorObj,
-    enemigo
-) {
+function contactoEnemigo(jugadorObj, enemigo) {
 
-    if (
-        jugadorMuerto ||
-        invulnerable
-    ) {
-        return;
-    }
+    if (jugadorMuerto || invulnerable) { return; }
 
-
-    if (
-        enemigo.tipo === 'Vortice'
-    ) {
-        return;
-    }
-
-
-    if (
-        enemigo.tipo === 'Glifo'
-    ) {
-
-        recibirDaño(10);
-    }
-
-
-    if (
-        enemigo.tipo === 'Golem'
-    ) {
-
-        recibirDaño(20);
-    }
-
-    if (
-        enemigo.tipo === 'Minigolem'
-    ) {
-
-        recibirDaño(8);
-    }
+    if (enemigo.tipo === 'Glifo') { recibirDaño(10); }
+    if (enemigo.tipo === 'Golem') { recibirDaño(20); }
+    if (enemigo.tipo === 'Minigolem') { recibirDaño(8); }
+    if (enemigo.tipo === 'Limite') { recibirDaño(enemigo.estado === 'embestida' ? 20 : 10); }
+    if (enemigo.tipo === 'Boss') { recibirDaño(enemigo.danoContacto || 20); }
 }
 
+function impactoProyectilEnemigo(jugadorObj, proyectil) {
 
-// ==================================================
-// IMPACTO PROYECTIL
-// ==================================================
-
-function impactoProyectilEnemigo(
-    jugadorObj,
-    proyectil
-) {
-
-    if (jugadorMuerto) {
-        return;
-    }
-
+    if (jugadorMuerto) { return; }
 
     proyectil.destroy();
 
+    if (invulnerable) { return; }
 
-    if (invulnerable) {
-        return;
-    }
-
-
-    recibirDaño(10);
+    recibirDaño(proyectil.daño || 10);
 }
 
+function recibirDaño(cantidad) {
 
-// ==================================================
-// RECIBIR DAÑO
-// ==================================================
+    if (jugadorMuerto || invulnerable) { return; }
 
-function recibirDaño(
-    cantidad
-) {
-
-    if (
-        jugadorMuerto ||
-        invulnerable
-    ) {
-        return;
-    }
-
-
-    vidaJugador -= cantidad;
-
-
-    if (
-        vidaJugador < 0
-    ) {
-
-        vidaJugador = 0;
-    }
-
-
+    cantidad = Math.max(1, Math.round(cantidad * multDefensa));
+    vidaJugador = Math.max(0, vidaJugador - cantidad);
     actualizarUI();
 
-
     invulnerable = true;
-
     jugador.setAlpha(0.4);
 
+    let idPartida = partidaId;
 
-    escenaJuego.time.delayedCall(
-        tiempoInvulnerabilidad,
-        () => {
-
-            if (!jugadorMuerto) {
-
-                invulnerable = false;
-
-                jugador.setAlpha(1);
-            }
+    escenaJuego.time.delayedCall(tiempoInvulnerabilidad, () => {
+        if (!jugadorMuerto && idPartida === partidaId) {
+            invulnerable = false;
+            jugador.setAlpha(1);
         }
-    );
+    });
 
-
-    if (
-        vidaJugador <= 0
-    ) {
-
-        morirJugador();
+    if (vidaJugador <= 0) {
+        terminarPartida(false);
     }
 }
 
-
-// ==================================================
-// MUERTE
-// ==================================================
-
-function morirJugador() {
-
-    jugadorMuerto = true;
-
-    jugador.body.setVelocity(0);
-
-
-    enemigos.getChildren().forEach(
-        enemigo => {
-
-            enemigo.body.setVelocity(0);
-        }
-    );
-
-
-    proyectilesEnemigos.getChildren().forEach(
-        proyectil => {
-
-            proyectil.body.setVelocity(0);
-        }
-    );
-
-
-    let fondoMuerte =
-        escenaJuego.add.rectangle(
-            escenaJuego.scale.width / 2,
-            escenaJuego.scale.height / 2,
-            escenaJuego.scale.width,
-            escenaJuego.scale.height,
-            0x000000,
-            0.75
-        )
-        .setScrollFactor(0)
-        .setDepth(90);
-
-
-    escenaJuego.add.text(
-        escenaJuego.scale.width / 2,
-        escenaJuego.scale.height / 2 - 50,
-        'HAS MUERTO',
-        {
-            fontSize: '48px',
-            fill: '#ff0000',
-            fontStyle: 'bold'
-        }
-    )
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(91);
-
-
-    escenaJuego.add.text(
-        escenaJuego.scale.width / 2,
-        escenaJuego.scale.height / 2 + 20,
-        `Llegaste a la ronda ${rondaActual}`,
-        {
-            fontSize: '20px',
-            fill: '#ffffff'
-        }
-    )
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(91);
-
-
-    escenaJuego.add.text(
-        escenaJuego.scale.width / 2,
-        escenaJuego.scale.height / 2 + 60,
-        'Recarga la página para volver a jugar',
-        {
-            fontSize: '18px',
-            fill: '#ffffff'
-        }
-    )
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(91);
+function dañoBase(arma, enemigo) {
+    if (enemigo.tipo === 'Glifo') { return arma.dañoGlifo; }
+    if (enemigo.tipo === 'Vortice') { return arma.dañoVortice; }
+    return arma.dañoGolem;
 }
 
+function dañarEnemigo(enemigo, cantidad) {
 
-// ==================================================
-// IMPACTO ENEMIGO
-// ==================================================
+    if (!enemigo || !enemigo.active) { return; }
 
-function impactarEnemigo(
-    bala,
-    enemigo
-) {
+    // Escudo indestructible de la Matriarca
+    if (enemigo.escudoActivo) { return; }
 
-    bala.destroy();
+    enemigo.hp -= Math.max(1, Math.round(cantidad));
 
-    let daño = 0;
+    if (enemigo.hp <= 0) {
 
+        puntos += PUNTOS[enemigo.tipo] || 0;
 
-    if (
-        enemigo.tipo === 'Glifo'
-    ) {
-
-        daño =
-            armaActual.dañoGlifo;
-    }
-
-
-    if (
-        enemigo.tipo === 'Vortice'
-    ) {
-
-        daño =
-            armaActual.dañoVortice;
-    }
-
-
-    if (
-        enemigo.tipo === 'Golem'
-    ) {
-
-        daño =
-            armaActual.dañoGolem;
-    }
-
-    if (
-        enemigo.tipo === 'Minigolem'
-    ) {
-
-        daño =
-            armaActual.dañoGolem;
-    }
-
-
-    enemigo.hp -= daño;
-
-
-    if (
-        enemigo.hp <= 0
-    ) {
-
-        if (
-            enemigo.tipo === 'Minigolem' &&
-            enemigo.golemPadre &&
-            enemigo.golemPadre.active
-        ) {
-
-            enemigo.golemPadre.minigolemsActivos =
-                Math.max(
-                    0,
-                    enemigo.golemPadre.minigolemsActivos - 1
-                );
+        if (enemigo.tipo === 'Minigolem' && enemigo.golemPadre && enemigo.golemPadre.active) {
+            enemigo.golemPadre.minigolemsActivos = Math.max(0, enemigo.golemPadre.minigolemsActivos - 1);
         }
 
         enemigo.destroy();
-
+        actualizarUI();
         comprobarFinRonda();
     }
 }
 
+function impactarEnemigo(bala, enemigo) {
+
+    if (!bala.active || !enemigo.active) { return; }
+
+    // Una bala solo golpea una vez a cada enemigo (necesario para perforante)
+    if (bala.golpeados.has(enemigo)) { return; }
+    bala.golpeados.add(enemigo);
+
+    let daño = dañoBase(bala.arma, enemigo) * dañoMult * bala.factor;
+    let x = enemigo.x;
+    let y = enemigo.y;
+
+    dañarEnemigo(enemigo, daño);
+    efectosImpacto(escenaJuego, enemigo, x, y, daño);
+
+    if (!tiene('perforante')) { bala.destroy(); }
+}
+
+function efectosImpacto(escena, objetivo, x, y, daño) {
+
+    // Munición explosiva: daño en área (50%)
+    if (tiene('explosiva')) {
+
+        let aro = escena.add.circle(x, y, 70, 0xff8800, 0.35);
+        escena.tweens.add({ targets: aro, alpha: 0, duration: 250, onComplete: () => aro.destroy() });
+
+        enemigos.getChildren().slice().forEach(e => {
+            if (e !== objetivo && e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= 70) {
+                dañarEnemigo(e, daño * 0.5);
+            }
+        });
+    }
+
+    // Cadena eléctrica: salta a hasta 2 enemigos cercanos (50%)
+    if (tiene('cadena')) {
+
+        let cercanos = enemigos.getChildren()
+            .filter(e => e !== objetivo && e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= 180)
+            .sort((a, b) => Phaser.Math.Distance.Between(x, y, a.x, a.y) - Phaser.Math.Distance.Between(x, y, b.x, b.y))
+            .slice(0, 2);
+
+        if (cercanos.length > 0) {
+
+            let rayo = escena.add.graphics();
+            rayo.lineStyle(3, 0x66ccff, 1);
+
+            let ox = x;
+            let oy = y;
+
+            cercanos.forEach(e => {
+                let ex = e.x;
+                let ey = e.y;
+                rayo.lineBetween(ox, oy, ex, ey);
+                ox = ex;
+                oy = ey;
+                dañarEnemigo(e, daño * 0.5);
+            });
+
+            escena.time.delayedCall(150, () => rayo.destroy());
+        }
+    }
+}
 
 // ==================================================
-// CAMBIAR ARMA
+// FIN DE PARTIDA (derrota o victoria por tiempo)
 // ==================================================
 
-function cambiarArma(
-    nuevaArma
-) {
+function terminarPartida(victoria) {
 
-    armaActual =
-        nuevaArma;
+    if (jugadorMuerto) { return; }
 
-    balasActuales =
-        armaActual.balasMax;
+    jugadorMuerto = true;
+    juegoCongelado = false;
+    preguntaActual = null;
 
+    contenedorMatematicas.setVisible(false);
+    jugador.body.setVelocity(0);
+    jugador.setAlpha(1);
+
+    enemigos.getChildren().forEach(e => e.body.setVelocity(0));
+    proyectilesEnemigos.getChildren().forEach(p => p.body.setVelocity(0));
+
+    mostrarPantallaFin(victoria);
+}
+
+function mostrarPantallaFin(victoria) {
+
+    let escena = escenaJuego;
+
+    pantallaFin = escena.add.container(escena.scale.width / 2, escena.scale.height / 2)
+        .setScrollFactor(0).setDepth(120);
+
+    let fondo = escena.add.rectangle(0, 0, escena.scale.width, escena.scale.height, 0x000000, 0.75);
+
+    let titulo = escena.add.text(0, -100,
+        victoria ? '¡VICTORIA!' : 'HAS MUERTO',
+        { fontSize: '48px', fill: victoria ? '#00ff88' : '#ff0000', fontStyle: 'bold' }
+    ).setOrigin(0.5);
+
+    let detalle = escena.add.text(0, -40,
+        victoria
+            ? `Resististe todo el tiempo y llegaste a la ronda ${rondaActual}`
+            : `Llegaste a la ronda ${rondaActual}`,
+        { fontSize: '20px', fill: '#ffffff' }
+    ).setOrigin(0.5);
+
+    let puntosTxt = escena.add.text(0, 5, `Puntos totales: ${puntos}`, {
+        fontSize: '30px', fill: '#ffd700', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    let botonReiniciar = crearBoton(escena, 0, 50, '↻  JUGAR DE NUEVO', () => iniciarPartida());
+
+    let botonMenu = crearBoton(escena, 0, 130, '⌂  MENÚ', () => {
+        pantallaFin.destroy();
+        pantallaFin = null;
+        partidaIniciada = false;
+        menuPrincipal.setVisible(true);
+    });
+
+    pantallaFin.add([fondo, titulo, detalle, puntosTxt, botonReiniciar, botonMenu]);
+}
+
+// ==================================================
+// ARMAS / UI
+// ==================================================
+
+function cambiarArma(nuevaArma) {
+    armaActual = nuevaArma;
+    balasActuales = maxBalas(armaActual);
     actualizarUI();
 }
 
-
-// ==================================================
-// ACTUALIZAR UI
-// ==================================================
-
 function actualizarUI() {
 
-    if (!textoUI) {
-        return;
-    }
+    if (!textoUI) { return; }
 
+    let minutos = Math.floor(tiempoLimite / 60);
+    let segundos = tiempoLimite % 60;
+    segundos = segundos < 10 ? '0' + segundos : segundos;
 
-    let minutos =
-        Math.floor(
-            tiempoLimite / 60
-        );
-
-
-    let segundos =
-        tiempoLimite % 60;
-
-
-    segundos =
-        segundos < 10
-            ? '0' + segundos
-            : segundos;
-
-
-    let enemigosRestantes =
-        enemigos
-            ? enemigos.countActive(true)
-            : 0;
-
+    let enemigosRestantes = enemigos ? enemigos.countActive(true) : 0;
 
     textoUI.setText(
-
         `❤️ VIDA: ${vidaJugador} / ${vidaMaxima}\n` +
-
         `⏱️ TIEMPO RESTANTE: ${minutos}:${segundos}\n` +
-
         `💥 ARMA EQUIPADA: ${armaActual.nombre.toUpperCase()} (Dificultad: ${armaActual.dif})\n` +
-
-        `⚡ MUNICIÓN: ${balasActuales} / ${armaActual.balasMax}\n` +
-
-        `👾 ENEMIGOS RESTANTES: ${enemigosRestantes}\n\n` +
-
+        `⚡ MUNICIÓN: ${balasActuales} / ${maxBalas(armaActual)}\n` +
+        `👾 ENEMIGOS RESTANTES: ${enemigosRestantes}\n` +
+        `✨ MEJORAS: ${resumenMejoras()}\n` +
+        `⭐ PUNTOS: ${puntos}\n\n` +
         `[Movimiento]: W A S D\n` +
-
         `[Disparo]: Click izquierdo\n` +
-
         `[Armas]: 1 Pistola | 2 Rifle | 3 Escopeta`
     );
 
-
-    if (textoRonda) {
-
-        textoRonda.setText(
-            `RONDA ${rondaActual}`
-        );
-    }
+    if (textoRonda) { textoRonda.setText(`RONDA ${rondaActual}`); }
 }
 
-
 // ==================================================
-// INICIAR RECARGA
+// RECARGA (PREGUNTAS)
 // ==================================================
 
 function iniciarRecarga() {
 
     juegoCongelado = true;
-
     pasoActual = 1;
 
+    let lista = BANCO_PREGUNTAS[armaActual.dif];
+    preguntaActual = lista[Phaser.Math.Between(0, lista.length - 1)];
 
-    let lista =
-        BANCO_PREGUNTAS[
-            armaActual.dif
-        ];
-
-
-    preguntaActual =
-        lista[
-            Phaser.Math.Between(
-                0,
-                lista.length - 1
-            )
-        ];
-
-
-    contenedorMatematicas.setVisible(
-        true
-    );
-
-
+    contenedorMatematicas.setVisible(true);
     mostrarPaso();
 }
 
+// Baraja las opciones del paso y recuerda dónde quedó la correcta
+function prepararPaso(paso) {
 
-// ==================================================
-// MOSTRAR PASO
-// ==================================================
+    let textos = paso.opciones.map(o => o.replace(/^[ZXC]\)\s*/, ''));
+    let orden = Phaser.Utils.Array.Shuffle([0, 1, 2]);
+
+    opcionesActuales = orden.map(i => textos[i]);
+    correctaActual = orden.indexOf(paso.correcta);
+}
 
 function mostrarPaso() {
 
-    if (!preguntaActual) {
-        return;
-    }
+    if (!preguntaActual) { return; }
 
+    let paso = pasoActual === 1 ? preguntaActual.p1 : preguntaActual.p2;
 
-    let paso =
-        pasoActual === 1
-            ? preguntaActual.p1
-            : preguntaActual.p2;
+    prepararPaso(paso);
 
+    textoTituloMat.setText('⚠️ MÓDULO DE DERIVACIÓN REQUERIDO');
+    textoFuncionMat.setText(`Función actual: ${preguntaActual.f}`);
+    textoPreguntaMat.setText(`PASO ${pasoActual}: ${paso.q}`);
 
-    textoTituloMat.setText(
-        '⚠️ MÓDULO DE DERIVACIÓN REQUERIDO'
-    );
+    textoRespuesta1.setText('Z) ' + opcionesActuales[0]);
+    textoRespuesta2.setText('X) ' + opcionesActuales[1]);
+    textoRespuesta3.setText('C) ' + opcionesActuales[2]);
 
+    textoAyudaMat.setText('Z = primera opción     X = segunda opción     C = tercera opción');
 
-    textoFuncionMat.setText(
-        `Función actual: ${preguntaActual.f}`
-    );
-
-
-    textoPreguntaMat.setText(
-        `PASO ${pasoActual}: ${paso.q}`
-    );
-
-
-    textoRespuesta1.setText(
-        paso.opciones[0]
-    );
-
-
-    textoRespuesta2.setText(
-        paso.opciones[1]
-    );
-
-
-    textoRespuesta3.setText(
-        paso.opciones[2]
-    );
-
-
-    textoAyudaMat.setText(
-        'Z = primera opción     X = segunda opción     C = tercera opción'
-    );
-
-
-    textoRespuesta1.setFill('#ffffff');
-    textoRespuesta2.setFill('#ffffff');
-    textoRespuesta3.setFill('#ffffff');
-
-
-    fondoMat.setStrokeStyle(
-        3,
-        0xffaa00
-    );
-
+    fondoMat.setStrokeStyle(3, 0xffaa00);
 
     redimensionarInterfaz();
 }
 
-
-// ==================================================
-// MANEJAR RECARGA
-// ==================================================
-
 function manejarRecarga() {
 
-    if (!preguntaActual) {
-        return;
-    }
-
-
-    let paso =
-        pasoActual === 1
-            ? preguntaActual.p1
-            : preguntaActual.p2;
-
+    if (!preguntaActual) { return; }
 
     let seleccion = -1;
 
+    if (Phaser.Input.Keyboard.JustDown(teclado.Z)) { seleccion = 0; }
+    if (Phaser.Input.Keyboard.JustDown(teclado.X)) { seleccion = 1; }
+    if (Phaser.Input.Keyboard.JustDown(teclado.C)) { seleccion = 2; }
 
-    if (
-        Phaser.Input.Keyboard.JustDown(
-            teclado.Z
-        )
-    ) {
+    if (seleccion === -1) { return; }
 
-        seleccion = 0;
-    }
+    if (seleccion === correctaActual) {
 
+        if (pasoActual === 1) {
 
-    if (
-        Phaser.Input.Keyboard.JustDown(
-            teclado.X
-        )
-    ) {
-
-        seleccion = 1;
-    }
-
-
-    if (
-        Phaser.Input.Keyboard.JustDown(
-            teclado.C
-        )
-    ) {
-
-        seleccion = 2;
-    }
-
-
-    if (
-        seleccion !== -1
-    ) {
-
-        if (
-            seleccion === paso.correcta
-        ) {
-
-            if (
-                pasoActual === 1
-            ) {
-
-                pasoActual = 2;
-
-                mostrarPaso();
-
-            } else {
-
-                balasActuales =
-                    armaActual.balasMax;
-
-                juegoCongelado =
-                    false;
-
-                contenedorMatematicas.setVisible(
-                    false
-                );
-
-                preguntaActual =
-                    null;
-
-                actualizarUI();
-            }
-
+            pasoActual = 2;
+            mostrarPaso();
 
         } else {
 
-            fondoMat.setStrokeStyle(
-                3,
-                0xff0000
-            );
+            balasActuales = maxBalas(armaActual);
+            juegoCongelado = false;
+            contenedorMatematicas.setVisible(false);
+            preguntaActual = null;
+            actualizarUI();
+        }
 
+    } else {
 
-            escenaJuego.time.delayedCall(
-                300,
-                () => {
+        fondoMat.setStrokeStyle(3, 0xff0000);
 
-                    fondoMat.setStrokeStyle(
-                        3,
-                        0xffaa00
-                    );
+        escenaJuego.time.delayedCall(300, () => {
+            fondoMat.setStrokeStyle(3, 0xffaa00);
+        });
+    }
+}
+
+// ==================================================
+// MEJORAS (1 de 3 al final de cada ronda)
+// ==================================================
+
+let menuMejoras = null;
+let eligiendoMejora = false;
+let mejorasObtenidas = {};
+
+const MEJORAS = [
+    { id: 'defensa', icono: '🛡️', nombre: 'Defensa', efecto: 'Reduce en 20% todo el daño recibido.',
+      aplicar: () => { multDefensa *= 0.8; } },
+    { id: 'armadura', icono: '❤️', nombre: 'Armadura', efecto: 'Aumenta la vida máxima en 50.',
+      aplicar: () => { vidaMaxima += 50; vidaJugador += 50; } },
+    { id: 'dano', icono: '🔫', nombre: 'Daño', efecto: 'Aumenta en 20% el daño de las armas.',
+      aplicar: () => { dañoMult += 0.2; } },
+    { id: 'cargador', icono: '📦', nombre: 'Cargador', efecto: 'Aumenta en 50% la capacidad de munición de cada arma.',
+      aplicar: () => { let antes = maxBalas(armaActual); capMult += 0.5; balasActuales += maxBalas(armaActual) - antes; } },
+    { id: 'velocidad', icono: '🏃', nombre: 'Velocidad', efecto: 'Aumenta en 15% la velocidad de movimiento.',
+      aplicar: () => { velMult += 0.15; } },
+    { id: 'regeneracion', icono: '🩹', nombre: 'Regeneración', efecto: 'Recupera 50 de vida al comenzar cada ronda.',
+      aplicar: () => { regenRonda += 50; } }
+];
+
+function resetMejoras() {
+    vidaMaxima = 100;
+    multDefensa = 1;
+    dañoMult = 1;
+    capMult = 1;
+    velMult = 1;
+    regenRonda = 0;
+    mejorasObtenidas = {};
+    eligiendoMejora = false;
+
+    Object.keys(especialesObj).forEach(k => {
+        if (especialesObj[k]) {
+            especialesObj[k].destroy();
+            especialesObj[k] = null;
+        }
+    });
+
+    if (menuMejoras) {
+        menuMejoras.destroy();
+        menuMejoras = null;
+    }
+}
+
+function resumenMejoras() {
+
+    let partes = MEJORAS.concat(ESPECIALES)
+        .filter(m => mejorasObtenidas[m.id])
+        .map(m => mejorasObtenidas[m.id] > 1 ? `${m.icono}x${mejorasObtenidas[m.id]}` : m.icono);
+
+    return partes.length ? partes.join(' ') : '-';
+}
+
+function mostrarMenuMejoras() {
+
+    let escena = escenaJuego;
+
+    eligiendoMejora = true;
+    juegoCongelado = true;
+
+    // Limpia lo que quedó en pantalla para que nada se quede congelado
+    proyectilesEnemigos.clear(true, true);
+    balas.clear(true, true);
+    jugador.body.setVelocity(0);
+
+    let pool = ESPECIALES.filter(e => !tiene(e.id));
+    let esEspecial = rondaActual % 3 === 0 && pool.length > 0;   // cada 3 rondas: mejoras especiales
+    let opciones = Phaser.Utils.Array.Shuffle((esEspecial ? pool : MEJORAS).slice()).slice(0, 3);
+
+    let ancho = escena.scale.width;
+    let alto = escena.scale.height;
+
+    menuMejoras = escena.add.container(ancho / 2, alto / 2).setScrollFactor(0).setDepth(105);
+    menuMejoras.opciones = opciones;
+
+    let fondo = escena.add.rectangle(0, 0, ancho, alto, 0x080810, 0.92);
+
+    let titulo = escena.add.text(0, -170, esEspecial ? '⭐ ¡MEJORA ESPECIAL! ⭐' : `RONDA ${rondaActual} COMPLETADA`, {
+        fontSize: '36px', fill: '#ffff00', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6
+    }).setOrigin(0.5);
+
+    let subtitulo = escena.add.text(0, -125, esEspecial ? `Ronda ${rondaActual} completada. Elige una (clic o teclas 1, 2, 3)` : 'Elige una mejora (clic o teclas 1, 2, 3)', {
+        fontSize: '18px', fill: '#aaaaaa', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    menuMejoras.add([fondo, titulo, subtitulo]);
+
+    let anchoTarjeta = Math.min(220, (ancho - 40) / 3 - 14);
+    let separacion = anchoTarjeta + 14;
+
+    opciones.forEach((mejora, i) => {
+        menuMejoras.add(crearTarjetaMejora(escena, (i - (opciones.length - 1) / 2) * separacion, 30, anchoTarjeta, mejora, i));
+    });
+}
+
+function crearTarjetaMejora(escena, x, y, ancho, mejora, indice) {
+
+    let alto = 230;
+
+    let tarjeta = escena.add.container(x, y);
+
+    let colorBorde = mejora.especial ? 0xffd700 : 0xffaa00;
+
+    let fondo = escena.add.rectangle(0, 0, ancho, alto, 0x252538, 1);
+    fondo.setStrokeStyle(3, colorBorde);
+
+    let icono = escena.add.text(0, -65, mejora.icono, { fontSize: '44px' }).setOrigin(0.5);
+
+    let nombre = escena.add.text(0, -20, mejora.nombre, {
+        fontSize: '22px', fill: '#ffffff', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    let efecto = escena.add.text(0, 8, mejora.efecto, {
+        fontSize: '15px', fill: '#dddddd', align: 'center', wordWrap: { width: ancho - 24 }
+    }).setOrigin(0.5, 0);
+
+    let tecla = escena.add.text(0, 102, `[${indice + 1}]`, {
+        fontSize: '18px', fill: '#aaaaaa', fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    tarjeta.add([fondo, icono, nombre, efecto, tecla]);
+    tarjeta.setSize(ancho, alto);
+
+    tarjeta.setInteractive(
+        new Phaser.Geom.Rectangle(-ancho / 2, -alto / 2, ancho, alto),
+        Phaser.Geom.Rectangle.Contains
+    );
+    tarjeta.input.cursor = 'pointer';
+
+    tarjeta.on('pointerover', () => { fondo.setFillStyle(0x383850); fondo.setStrokeStyle(3, 0xffff00); });
+    tarjeta.on('pointerout', () => { fondo.setFillStyle(0x252538); fondo.setStrokeStyle(3, colorBorde); });
+
+    tarjeta.on('pointerdown', (pointer, localX, localY, event) => {
+        if (event) { event.stopPropagation(); }
+        ultimoClickBoton = escena.time.now;
+        elegirMejora(mejora);
+    });
+
+    return tarjeta;
+}
+
+function manejarMenuMejoras() {
+
+    if (!menuMejoras) { return; }
+
+    let teclas = [teclado.UNO, teclado.DOS, teclado.TRES];
+
+    teclas.forEach((tecla, i) => {
+        if (Phaser.Input.Keyboard.JustDown(tecla) && menuMejoras && menuMejoras.opciones[i]) {
+            elegirMejora(menuMejoras.opciones[i]);
+        }
+    });
+}
+
+function elegirMejora(mejora) {
+
+    if (!eligiendoMejora) { return; }
+
+    mejora.aplicar();
+    mejorasObtenidas[mejora.id] = (mejorasObtenidas[mejora.id] || 0) + 1;
+
+    eligiendoMejora = false;
+    juegoCongelado = false;
+
+    menuMejoras.destroy();
+    menuMejoras = null;
+
+    rondaActual++;
+    iniciarRonda(escenaJuego);
+}
+
+// ==================================================
+// MEJORAS ESPECIALES (se ofrecen cada 3 rondas, una sola vez cada una)
+// ==================================================
+
+const especialesObj = { luna: null, aliado: null, sombra: null, aura: null };
+
+let lunaAngulo = 0;
+let ultimoTickAura = 0;
+let ultimoDisparoAliado = 0;
+
+function tiene(id) {
+    return !!mejorasObtenidas[id];
+}
+
+const ESPECIALES = [
+    { id: 'multidisparo', icono: '🔀', nombre: 'Multidisparo', efecto: 'Cada disparo lanza varios proyectiles.',
+      aplicar: () => {} },
+    { id: 'luna', icono: '🌙', nombre: 'Luna orbital', efecto: 'Gira alrededor del jugador y daña a los enemigos al tocarlos.',
+      aplicar: () => {
+          especialesObj.luna = escenaJuego.add.circle(jugador.x, jugador.y, 12, 0xddddff);
+          especialesObj.luna.setStrokeStyle(2, 0xffffff);
+      } },
+    { id: 'aliado', icono: '🤖', nombre: 'Aliado', efecto: 'Pequeño compañero que sigue al jugador y dispara automáticamente.',
+      aplicar: () => {
+          especialesObj.aliado = escenaJuego.add.rectangle(jugador.x + 50, jugador.y - 50, 16, 16, 0x66aaff);
+      } },
+    { id: 'perforante', icono: '🔹', nombre: 'Proyectil perforante', efecto: 'Las balas atraviesan enemigos.',
+      aplicar: () => {} },
+    { id: 'explosiva', icono: '💥', nombre: 'Munición explosiva', efecto: 'Los impactos generan daño en área.',
+      aplicar: () => {} },
+    { id: 'cadena', icono: '⚡', nombre: 'Cadena eléctrica', efecto: 'El daño puede saltar entre enemigos cercanos.',
+      aplicar: () => {} },
+    { id: 'sombra', icono: '👻', nombre: 'Doble sombra', efecto: 'Aparece una copia del jugador que también dispara.',
+      aplicar: () => {
+          especialesObj.sombra = escenaJuego.add.rectangle(jugador.x - 60, jugador.y - 60, 32, 32, 0x00ff00, 0.45);
+      } },
+    { id: 'aura', icono: '🔥', nombre: 'Aura de fuego', efecto: 'Los enemigos cercanos reciben daño continuamente.',
+      aplicar: () => {
+          especialesObj.aura = escenaJuego.add.circle(jugador.x, jugador.y, 110, 0xff5500, 0.18).setDepth(-1);
+      } }
+];
+
+ESPECIALES.forEach(e => { e.especial = true; });
+
+function actualizarEspeciales(escena) {
+
+    let ahora = escena.time.now;
+    let o = especialesObj;
+
+    // Aura de fuego: 6 de daño cada 0,5 s a los que estén cerca
+    if (o.aura) {
+        o.aura.setPosition(jugador.x, jugador.y);
+
+        if (ahora - ultimoTickAura >= 500) {
+            ultimoTickAura = ahora;
+
+            enemigos.getChildren().slice().forEach(e => {
+                if (e.active && Phaser.Math.Distance.Between(jugador.x, jugador.y, e.x, e.y) <= 110 + e.width / 2) {
+                    dañarEnemigo(e, 6 * dañoMult);
                 }
-            );
+            });
+        }
+    }
+
+    // Luna orbital: 12 de daño al tocar (máx. una vez cada 0,4 s por enemigo)
+    if (o.luna) {
+        lunaAngulo += 0.06;
+        o.luna.setPosition(
+            jugador.x + Math.cos(lunaAngulo) * 85,
+            jugador.y + Math.sin(lunaAngulo) * 85
+        );
+
+        enemigos.getChildren().slice().forEach(e => {
+            if (e.active &&
+                Phaser.Math.Distance.Between(o.luna.x, o.luna.y, e.x, e.y) <= 14 + e.width / 2 &&
+                ahora - (e.ultimoGolpeLuna || 0) >= 400) {
+
+                e.ultimoGolpeLuna = ahora;
+                dañarEnemigo(e, 12 * dañoMult);
+            }
+        });
+    }
+
+    // Doble sombra: sigue al jugador con un pequeño retraso
+    if (o.sombra) {
+        o.sombra.x += (jugador.x - 60 - o.sombra.x) * 0.12;
+        o.sombra.y += (jugador.y - 60 - o.sombra.y) * 0.12;
+    }
+
+    // Aliado: sigue al jugador y dispara al enemigo más cercano cada 0,9 s
+    if (o.aliado) {
+        o.aliado.x += (jugador.x + 50 - o.aliado.x) * 0.08;
+        o.aliado.y += (jugador.y - 50 - o.aliado.y) * 0.08;
+
+        if (ahora - ultimoDisparoAliado >= 900) {
+
+            let objetivo = null;
+            let mejorDist = 600;
+
+            enemigos.getChildren().forEach(e => {
+                let d = Phaser.Math.Distance.Between(o.aliado.x, o.aliado.y, e.x, e.y);
+                if (e.active && d < mejorDist) {
+                    mejorDist = d;
+                    objetivo = e;
+                }
+            });
+
+            if (objetivo) {
+                ultimoDisparoAliado = ahora;
+                let angulo = Phaser.Math.Angle.Between(o.aliado.x, o.aliado.y, objetivo.x, objetivo.y);
+                crearBala(escena, o.aliado.x, o.aliado.y, angulo, ARMAS.PISTOLA, 1, 0x66ccff);
+            }
         }
     }
 }
 
-</script>
+// ==================================================
+// BOSSES (uno cada 5 rondas)
+// ==================================================
 
+let reloj = 0;   // reloj de juego en ms (se detiene con el juego congelado)
+
+const BOSSES = [
+    { id: 'indeterminacion', nombre: 'La Gran Indeterminación', color: 0x7700aa, hp: 500, etiqueta: '0/0',
+      comportamiento: comportamientoIndeterminacion },
+    { id: 'rango', nombre: 'Rango Variable', color: 0x0077aa, hp: 1000, tamaño: 72, etiqueta: 'x',
+      iniciar: iniciarRangoVariable, comportamiento: comportamientoRangoVariable, limpiar: limpiarRangoVariable }
+];
+
+let explosionesBoss = [];
+const EXPLOSION_RADIO = 80;
+
+let barraBossFondo, barraBossVida, textoBossNombre;
+const BARRA_BOSS_ANCHO = 260;
+
+function crearBoss(escena) {
+
+    // Cada 15 rondas sale la Matriarca; los demás jefes se alternan en las otras rondas múltiplo de 5
+    let def = (rondaActual % 15 === 0)
+        ? MATRIARCA
+        : BOSSES[(Math.floor(rondaActual / 5) - Math.floor(rondaActual / 15) - 1) % BOSSES.length];
+
+    let boss = crearEnemigo(escena, 'Boss', def.color, def.hp, def.tamaño);
+
+    boss.def = def;
+    boss.hpMax = def.hp;
+    boss.ultimoIND = reloj - 1500;   // primera ráfaga a los 1,5 s
+    boss.rafagas = 0;
+    boss.fase2 = false;
+    boss.proxExplosion = 0;
+    boss.setStrokeStyle(4, 0xffffff);
+
+    boss.etiqueta = escena.add.text(boss.x, boss.y, def.etiqueta || '?', {
+        fontSize: '34px', fill: '#ffffff', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(5);
+
+    boss.on('destroy', () => {
+        if (boss.etiqueta) { boss.etiqueta.destroy(); }
+        limpiarExplosionesBoss();
+        ocultarBarraBoss();
+        if (def.limpiar) { def.limpiar(boss); }
+    });
+
+    if (def.iniciar) { def.iniciar(escena, boss); }
+
+    mostrarAviso(escena, `⚠️ ${def.nombre.toUpperCase()} ⚠️`, '#ff4466');
+}
+
+function mostrarAviso(escena, texto, color) {
+
+    let t = escena.add.text(escena.scale.width / 2, escena.scale.height / 3, texto, {
+        fontSize: '30px', fill: color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 6,
+        align: 'center', wordWrap: { width: escena.scale.width - 40 }
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
+
+    escena.tweens.add({ targets: t, alpha: 0, delay: 1800, duration: 700, onComplete: () => t.destroy() });
+}
+
+// ---------- La Gran Indeterminación ----------
+
+function comportamientoIndeterminacion(escena, boss) {
+
+    // Avanza lento hasta quedar a ~280 px del jugador
+    let dist = Phaser.Math.Distance.Between(boss.x, boss.y, jugador.x, jugador.y);
+
+    if (dist > 280) {
+        escena.physics.moveToObject(boss, jugador, 45);
+    } else {
+        boss.body.setVelocity(0);
+    }
+
+    // Ráfaga de 8 proyectiles IND en todas direcciones cada 3 s (el ángulo rota entre ráfagas)
+    if (reloj - boss.ultimoIND >= 3000) {
+
+        boss.ultimoIND = reloj;
+
+        let base = boss.rafagas * (Math.PI / 8);
+        boss.rafagas++;
+
+        for (let i = 0; i < 8; i++) {
+            crearProyectilIND(escena, boss.x, boss.y, base + i * (Math.PI / 4));
+        }
+    }
+
+    // Fase 2 (mitad de vida): empiezan a caer explosiones rojas
+    if (!boss.fase2 && boss.hp <= boss.hpMax / 2) {
+        boss.fase2 = true;
+        boss.proxExplosion = reloj + 1000;
+        boss.setFillStyle(0xcc0033);
+        mostrarAviso(escena, '¡FASE 2: LLUVIA DE EXPLOSIONES!', '#ff0000');
+    }
+
+    if (boss.fase2 && reloj >= boss.proxExplosion) {
+        boss.proxExplosion = reloj + 2500;
+        lluviaExplosiones(escena);
+    }
+}
+
+function crearProyectilIND(escena, x, y, angulo) {
+
+    let p = escena.add.rectangle(x, y, 48, 48, 0x990033);   // tamaño de un golem
+    p.setStrokeStyle(3, 0xff6688);
+
+    escena.physics.add.existing(p);
+    proyectilesEnemigos.add(p);
+
+    p.daño = 20;
+
+    p.etiqueta = escena.add.text(x, y, 'IND', {
+        fontSize: '16px', fill: '#ffffff', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(5);
+
+    p.on('destroy', () => { if (p.etiqueta) { p.etiqueta.destroy(); } });
+
+    escena.physics.velocityFromRotation(angulo, 170, p.body.velocity);
+
+    escena.time.delayedCall(7000, () => {
+        if (p && p.active) { p.destroy(); }
+    });
+}
+
+// 3 explosiones: una justo donde está el jugador y dos cerca
+function lluviaExplosiones(escena) {
+
+    let puntosExp = [{ x: jugador.x, y: jugador.y }];
+
+    for (let i = 0; i < 2; i++) {
+        puntosExp.push({
+            x: jugador.x + Phaser.Math.Between(-220, 220),
+            y: jugador.y + Phaser.Math.Between(-220, 220)
+        });
+    }
+
+    puntosExp.forEach(pt => {
+        crearExplosionBoss(
+            escena,
+            Phaser.Math.Clamp(pt.x, 60, 2340),
+            Phaser.Math.Clamp(pt.y, 60, 2340)
+        );
+    });
+}
+
+// Aviso rojo que se va llenando durante 2 s; luego explota (15 de daño si sigues dentro)
+function crearExplosionBoss(escena, x, y) {
+
+    let aviso = escena.add.circle(x, y, EXPLOSION_RADIO, 0xff0000, 0.12);
+    aviso.setStrokeStyle(3, 0xff0000);
+
+    let relleno = escena.add.circle(x, y, EXPLOSION_RADIO, 0xff0000, 0.35).setScale(0);
+
+    explosionesBoss.push({ x: x, y: y, creada: reloj, detonaEn: reloj + 2000, aviso: aviso, relleno: relleno });
+}
+
+function actualizarExplosionesBoss(escena) {
+
+    explosionesBoss = explosionesBoss.filter(e => {
+
+        if (reloj < e.detonaEn) {
+            e.relleno.setScale(Math.min(1, (reloj - e.creada) / 2000));
+            return true;
+        }
+
+        // Detonación
+        e.aviso.destroy();
+        e.relleno.setScale(1).setFillStyle(0xff4444, 0.8);
+
+        escena.tweens.add({
+            targets: e.relleno,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => e.relleno.destroy()
+        });
+
+        if (Phaser.Math.Distance.Between(jugador.x, jugador.y, e.x, e.y) <= EXPLOSION_RADIO + 10) {
+            recibirDaño(15);
+        }
+
+        return false;
+    });
+}
+
+function limpiarExplosionesBoss() {
+
+    explosionesBoss.forEach(e => {
+        e.aviso.destroy();
+        e.relleno.destroy();
+    });
+
+    explosionesBoss = [];
+}
+
+function limpiarBoss() {
+    limpiarExplosionesBoss();
+    reloj = 0;
+    ocultarBarraBoss();
+    restaurarLimitesMundo();
+}
+
+function restaurarLimitesMundo() {
+    if (escenaJuego) { escenaJuego.physics.world.setBounds(0, 0, 2400, 2400); }
+}
+
+// Las etiquetas de texto (IND, 0/0) siguen a su objeto
+function actualizarEtiquetas() {
+
+    proyectilesEnemigos.getChildren().forEach(p => {
+        if (p.etiqueta) { p.etiqueta.setPosition(p.x, p.y); }
+    });
+
+    enemigos.getChildren().forEach(e => {
+        if (e.etiqueta) { e.etiqueta.setPosition(e.x, e.y); }
+    });
+}
+
+// ---------- Barra de vida del boss (esquina superior derecha) ----------
+
+function crearBarraBoss(escena) {
+
+    textoBossNombre = escena.add.text(0, 0, '', { fontSize: '16px', fill: '#ff6688', fontStyle: 'bold' })
+        .setOrigin(1, 0).setScrollFactor(0).setDepth(20).setVisible(false);
+
+    barraBossFondo = escena.add.rectangle(0, 0, BARRA_BOSS_ANCHO, 14, 0x330011)
+        .setOrigin(0, 0).setScrollFactor(0).setDepth(20).setVisible(false);
+
+    barraBossVida = escena.add.rectangle(0, 0, BARRA_BOSS_ANCHO, 14, 0xff2244)
+        .setOrigin(0, 0).setScrollFactor(0).setDepth(21).setVisible(false);
+}
+
+function ocultarBarraBoss() {
+    if (textoBossNombre) { textoBossNombre.setVisible(false); }
+    if (barraBossFondo) { barraBossFondo.setVisible(false); }
+    if (barraBossVida) { barraBossVida.setVisible(false); }
+}
+
+function actualizarBarraBoss() {
+
+    let boss = enemigos.getChildren().find(e => e.active && e.tipo === 'Boss');
+
+    if (!boss) {
+        ocultarBarraBoss();
+        return;
+    }
+
+    let ancho = escenaJuego.scale.width;
+    let x = ancho - 20 - BARRA_BOSS_ANCHO;
+
+    textoBossNombre.setText(boss.def.nombre.toUpperCase()).setPosition(ancho - 20, 52).setVisible(true);
+    barraBossFondo.setPosition(x, 78).setVisible(true);
+    barraBossVida.setPosition(x, 78).setVisible(true);
+    barraBossVida.setSize(BARRA_BOSS_ANCHO * Math.max(0, boss.hp) / boss.hpMax, 14);
+}
+
+// ==================================================
+// BOSS 2: RANGO VARIABLE
+// ==================================================
+
+const RANGO_LADO = 800;          // lado del cuadrilátero
+const RANGO_ORBITA = 90;         // distancia de los escudos al boss
+const RANGO_VEL_ESCUDOS = 0.0011; // rad/ms: ~1 vuelta cada 5,7 s
+
+function iniciarRangoVariable(escena, boss) {
+
+    let L = RANGO_LADO;
+
+    // Cuadrilátero centrado en el jugador (sin salirse del mapa)
+    let cx = Phaser.Math.Clamp(jugador.x, L / 2, 2400 - L / 2);
+    let cy = Phaser.Math.Clamp(jugador.y, L / 2, 2400 - L / 2);
+    let ax = cx - L / 2;
+    let ay = cy - L / 2;
+
+    // El boss aparece dentro, a ~330 px del jugador y hacia el centro
+    let ang = Phaser.Math.Angle.Between(jugador.x, jugador.y, cx, cy) + Phaser.Math.FloatBetween(-0.8, 0.8);
+    let bx = Phaser.Math.Clamp(jugador.x + Math.cos(ang) * 330, ax + 70, ax + L - 70);
+    let by = Phaser.Math.Clamp(jugador.y + Math.sin(ang) * 330, ay + 70, ay + L - 70);
+
+    boss.body.reset(bx, by);
+    boss.body.setCollideWorldBounds(true);
+
+    // Los límites del mundo pasan a ser el cuadrilátero: el jugador no puede salir
+    escena.physics.world.setBounds(ax, ay, L, L);
+
+    boss.rect = escena.add.rectangle(cx, cy, L, L, 0xff0033, 0.05)
+        .setStrokeStyle(6, 0xff3355).setDepth(1);
+
+    // Dos escudos (barras) que orbitan al boss y bloquean las balas
+    boss.escudos = [0, 1].map(() => {
+        let e = escena.add.rectangle(bx, by, 100, 18, 0x44ccff).setDepth(4);
+        e.setStrokeStyle(2, 0xffffff);
+        return e;
+    });
+
+    boss.gfx = escena.add.graphics().setDepth(2);   // línea de aviso de la embestida
+
+    boss.fase2 = false;
+    boss.estado = 'persecucion';
+    boss.estadoDesde = reloj;
+    boss.danoContacto = 20;
+
+    boss.barras = [];
+    boss.proxBarras = 0;
+}
+
+function comportamientoRangoVariable(escena, boss) {
+
+    actualizarEscudosRango(boss);
+    contactoBarrasRango(boss);
+
+    // Fase 1: persigue a velocidad de glifo mientras el cuadrilátero te encierra
+    if (!boss.fase2) {
+
+        escena.physics.moveToObject(boss, jugador, 160);
+
+        if (boss.hp <= boss.hpMax / 2) {
+            romperCuadrilatero(escena, boss);
+        }
+
+        return;
+    }
+
+    // Fase 2: persecución rápida -> aviso -> embestida a toda velocidad -> repite
+    let t = reloj - boss.estadoDesde;
+
+    // Además, cada 2,5 s lanza barras giratorias con forma de escudo
+    if (reloj >= boss.proxBarras) {
+        boss.proxBarras = reloj + 2500;
+        lanzarBarrasGiratorias(escena, boss);
+    }
+
+    if (boss.estado === 'persecucion') {
+
+        boss.danoContacto = 20;
+        boss.gfx.clear();
+        escena.physics.moveToObject(boss, jugador, 240);
+
+        if (t >= 1200) {
+            boss.estado = 'apuntar';
+            boss.estadoDesde = reloj;
+        }
+
+    } else if (boss.estado === 'apuntar') {
+
+        boss.body.setVelocity(0);
+
+        // Sigue al jugador la primera mitad del aviso y luego fija la dirección (para poder esquivar)
+        if (t < 350) {
+            boss.dir = Phaser.Math.Angle.Between(boss.x, boss.y, jugador.x, jugador.y);
+        }
+
+        boss.gfx.clear();
+        boss.gfx.lineStyle(4, 0xff3355, t < 350 ? 0.35 : 0.9);
+        boss.gfx.lineBetween(
+            boss.x, boss.y,
+            boss.x + Math.cos(boss.dir) * 700,
+            boss.y + Math.sin(boss.dir) * 700
+        );
+
+        if (t >= 700) {
+            boss.estado = 'embestida';
+            boss.estadoDesde = reloj;
+            boss.danoContacto = 30;
+            boss.gfx.clear();
+            escena.physics.velocityFromRotation(boss.dir, 560, boss.body.velocity);
+        }
+
+    } else if (boss.estado === 'embestida') {
+
+        if (t >= 800) {
+            boss.estado = 'persecucion';
+            boss.estadoDesde = reloj;
+        }
+    }
+}
+
+function romperCuadrilatero(escena, boss) {
+
+    boss.fase2 = true;
+    boss.estado = 'persecucion';
+    boss.estadoDesde = reloj;
+    boss.proxBarras = reloj + 1500;
+
+    restaurarLimitesMundo();
+    boss.setFillStyle(0xff3300);
+
+    if (boss.rect) {
+        let marco = boss.rect;
+        boss.rect = null;
+        escena.tweens.add({ targets: marco, alpha: 0, duration: 600, onComplete: () => marco.destroy() });
+    }
+
+    mostrarAviso(escena, '¡EL CUADRILÁTERO SE ROMPE! ¡CUIDADO CON LAS EMBESTIDAS!', '#ff3355');
+}
+
+// Los escudos giran alrededor del boss y destruyen las balas del jugador que los tocan
+function actualizarEscudosRango(boss) {
+
+    boss.escudos.forEach((e, i) => {
+        let a = reloj * RANGO_VEL_ESCUDOS + i * Math.PI;
+        e.setPosition(boss.x + Math.cos(a) * RANGO_ORBITA, boss.y + Math.sin(a) * RANGO_ORBITA);
+        e.setRotation(a + Math.PI / 2);   // la barra queda tangente a la órbita
+    });
+
+    balas.getChildren().slice().forEach(b => {
+
+        boss.escudos.forEach(e => {
+
+            if (!b.active) { return; }
+
+            // Pasa la posición de la bala al sistema de coordenadas de la barra
+            let dx = b.x - e.x;
+            let dy = b.y - e.y;
+            let c = Math.cos(-e.rotation);
+            let sn = Math.sin(-e.rotation);
+            let lx = dx * c - dy * sn;
+            let ly = dx * sn + dy * c;
+
+            if (Math.abs(lx) <= e.width / 2 + 6 && Math.abs(ly) <= e.height / 2 + 6) {
+                b.destroy();
+            }
+        });
+    });
+}
+
+function limpiarRangoVariable(boss) {
+
+    (boss.escudos || []).forEach(e => e.destroy());
+    (boss.barras || []).forEach(b => b.destroy());
+    boss.barras = [];
+
+    if (boss.rect) { boss.rect.destroy(); boss.rect = null; }
+    if (boss.gfx) { boss.gfx.destroy(); boss.gfx = null; }
+
+    restaurarLimitesMundo();
+}
+
+// ---------- Daño de los escudos y barras giratorias ----------
+
+const RANGO_DANO_ESCUDO = 15;
+const RANGO_DANO_BARRA = 15;
+
+// ¿Está el punto (px, py) sobre la barra rotada e? (margen = mitad del jugador aprox.)
+function dentroDeBarra(e, px, py, margen) {
+
+    let dx = px - e.x;
+    let dy = py - e.y;
+    let c = Math.cos(-e.rotation);
+    let sn = Math.sin(-e.rotation);
+    let lx = dx * c - dy * sn;
+    let ly = dx * sn + dy * c;
+
+    return Math.abs(lx) <= e.width / 2 + margen && Math.abs(ly) <= e.height / 2 + margen;
+}
+
+function contactoBarrasRango(boss) {
+
+    if (jugadorMuerto) { return; }
+
+    // Los escudos hacen daño al tocarlos (la invulnerabilidad evita daño en cada frame)
+    boss.escudos.forEach(e => {
+        if (dentroDeBarra(e, jugador.x, jugador.y, 14)) {
+            recibirDaño(RANGO_DANO_ESCUDO);
+        }
+    });
+
+    // Barras giratorias: giran mientras vuelan y desaparecen al golpear
+    boss.barras = boss.barras.filter(b => b.active);
+
+    boss.barras.forEach(b => {
+
+        b.rotation = b.rot0 + (reloj - b.creada) * 0.008;   // 8 rad/s
+
+        if (dentroDeBarra(b, jugador.x, jugador.y, 14)) {
+            b.destroy();
+            recibirDaño(RANGO_DANO_BARRA);
+        }
+    });
+
+    boss.barras = boss.barras.filter(b => b.active);
+}
+
+// Abanico de 3 barras hacia el jugador
+function lanzarBarrasGiratorias(escena, boss) {
+
+    let base = Phaser.Math.Angle.Between(boss.x, boss.y, jugador.x, jugador.y);
+
+    [-0.35, 0, 0.35].forEach(d => {
+
+        let b = escena.add.rectangle(boss.x, boss.y, 100, 18, 0xff5522).setDepth(4);
+        b.setStrokeStyle(2, 0xffffff);
+
+        escena.physics.add.existing(b);
+        b.body.allowRotation = false;   // el cuerpo no gira; el impacto se calcula con dentroDeBarra
+
+        b.rot0 = Math.random() * Math.PI * 2;
+        b.creada = reloj;
+
+        escena.physics.velocityFromRotation(base + d, 260, b.body.velocity);
+
+        escena.time.delayedCall(6000, () => {
+            if (b.active) { b.destroy(); }
+        });
+
+        boss.barras.push(b);
+    });
+}
+
+// ==================================================
+// BOSS FINAL: MATRIARCA CONTINUIDAD (cada 15 rondas)
+// ==================================================
+
+const MATRIARCA_LADO = 1000;        // arena reducida (el mapa normal es 2400)
+const MATRIARCA_LARGO_LASER = 780;  // llega hasta las esquinas de la arena
+const MATRIARCA_MODOS = ['esferas', 'limites', 'laseres'];   // ciclo de la fase final (20 s cada una)
+const MATRIARCA_RESPAWN_LIMITES = 10000;   // ms desde que mueren hasta que reaparecen
+const MATRIARCA_GIRO_LASER = 20000;        // ms que gira el ventilador antes de invertir
+const MATRIARCA_VEL_LASER = 0.0005;        // rad/ms (~0,5 rad/s)
+
+const MATRIARCA = {
+    id: 'matriarca', nombre: 'Matriarca Continuidad', color: 0x00aa88, hp: 5000, tamaño: 140, etiqueta: 'f(x)',
+    iniciar: iniciarMatriarca, comportamiento: comportamientoMatriarca, limpiar: limpiarMatriarca
+};
+
+function iniciarMatriarca(escena, boss) {
+
+    let L = MATRIARCA_LADO;
+    let cx = 1200;
+    let cy = 1200;
+    let ax = cx - L / 2;
+    let ay = cy - L / 2;
+
+    // Quieta en el centro
+    boss.setPosition(cx, cy);
+    boss.body.reset(cx, cy);
+    boss.body.setImmovable(true);
+    boss.danoContacto = 25;
+
+    // El mapa se reduce a la arena
+    escena.physics.world.setBounds(ax, ay, L, L);
+
+    jugador.setPosition(cx, cy + 340);
+    jugador.body.reset(cx, cy + 340);
+
+    // Zona exterior oscurecida + marco de la arena
+    let g = escena.add.graphics().setDepth(1);
+    g.fillStyle(0x000000, 0.9);
+    g.fillRect(0, 0, 2400, ay);
+    g.fillRect(0, ay + L, 2400, 2400 - ay - L);
+    g.fillRect(0, ay, ax, L);
+    g.fillRect(ax + L, ay, 2400 - ax - L, L);
+    g.lineStyle(6, 0xaa44ff, 1);
+    g.strokeRect(ax, ay, L, L);
+    boss.arenaGfx = g;
+
+    boss.laserGfx = escena.add.graphics().setDepth(3);
+
+    boss.orbes = [];
+    boss.ultOrbe = reloj - 1500;       // primera esfera a los ~2 s
+    boss.limites = [];
+    boss.limitesHechos = false;
+    boss.escudoActivo = false;
+    boss.escudoGfx = null;
+    boss.laseresDesbloq = false;
+    boss.alterna = false;
+    boss.modo = 'esferas';
+    boss.cambioModo = 0;
+    boss.lasersOn = false;
+    boss.laserAng = Math.random() * Math.PI * 2;
+    boss.laserDir = -1;                // se invierte en cada activación, así el primer giro es +1
+    boss.proxLimites = 0;
+    boss.laserInicio = 0;
+    boss.laserFlip = 0;
+    boss.ultReloj = reloj;
+}
+
+function comportamientoMatriarca(escena, boss) {
+
+    let dt = reloj - boss.ultReloj;
+    boss.ultReloj = reloj;
+
+    boss.body.setVelocity(0);
+
+    // --- Etapa 2 (4000): invoca 5 Límites y se cubre con un escudo indestructible ---
+    if (!boss.limitesHechos && boss.hp <= 4000) {
+        invocarLimites(escena, boss);
+    }
+
+    if (boss.escudoActivo) {
+        boss.limites = boss.limites.filter(l => l.active);
+
+        if (boss.limites.length === 0) {
+            boss.escudoActivo = false;
+            if (boss.escudoGfx) { boss.escudoGfx.destroy(); boss.escudoGfx = null; }
+            boss.proxLimites = reloj + MATRIARCA_RESPAWN_LIMITES;
+            mostrarAviso(escena, '¡EL ESCUDO CAE! ¡ATÁCALA!', '#66ffcc');
+        }
+    }
+
+    if (!boss.escudoActivo && boss.limitesHechos) {
+
+        // --- Etapa 3 (3000): se enfurece y aparecen los láseres ---
+        if (!boss.laseresDesbloq && boss.hp <= 3000) {
+            boss.laseresDesbloq = true;
+            boss.setFillStyle(0xdd2266);
+            mostrarAviso(escena, '¡LA MATRIARCA SE ENFURECE!\nLÁSERES GIRATORIOS', '#ff2255');
+        }
+
+        // --- Etapa 4 (2000): alterna esferas / láseres cada 20 s ---
+        if (boss.laseresDesbloq && !boss.alterna && boss.hp <= 2000) {
+            boss.alterna = true;
+            boss.modo = 'laseres';
+            boss.cambioModo = reloj + 20000;
+            boss.setFillStyle(0xff0044);
+            mostrarAviso(escena, '¡FASES ALTERNAS!', '#ff0044');
+        }
+    }
+
+    // Fase final: esferas -> límites -> láseres -> esferas...
+    if (boss.alterna && reloj >= boss.cambioModo) {
+
+        boss.modo = MATRIARCA_MODOS[(MATRIARCA_MODOS.indexOf(boss.modo) + 1) % MATRIARCA_MODOS.length];
+        boss.cambioModo = reloj + 20000;
+        boss.ultOrbe = reloj - 1500;
+
+        if (boss.modo === 'limites') { boss.proxLimites = reloj; }   // los Límites salen enseguida
+
+        let avisos = { esferas: '🔶 FASE DE ESFERAS', limites: '🛡️ FASE DE LÍMITES', laseres: '⚡ FASE DE LÁSERES' };
+        mostrarAviso(escena, avisos[boss.modo], '#ffaa00');
+    }
+
+    // Los Límites reaparecen 10 s después de ser derrotados:
+    // en la 2ª fase (4000-3000) y durante la fase de límites del ciclo final
+    let quiereLimites = boss.alterna ? boss.modo === 'limites' : (boss.limitesHechos && boss.hp > 3000);
+
+    if (quiereLimites && !boss.escudoActivo && reloj >= boss.proxLimites) {
+        invocarLimites(escena, boss);
+    }
+
+    // Qué ataques están activos ahora
+    let quiereOrbes = boss.alterna ? boss.modo === 'esferas' : true;
+    let quiereLaseres = boss.alterna ? boss.modo === 'laseres' : boss.laseresDesbloq;
+
+    // Esferas de energía
+    if (quiereOrbes) {
+        let intervalo = boss.alterna ? 2200 : (boss.laseresDesbloq ? 4000 : 3500);
+
+        if (reloj - boss.ultOrbe >= intervalo) {
+            boss.ultOrbe = reloj;
+            lanzarOrbeMatriarca(escena, boss);
+        }
+    }
+
+    actualizarOrbesMatriarca(escena, boss);
+
+    // Láseres
+    if (quiereLaseres && !boss.lasersOn) {
+        boss.lasersOn = true;
+        boss.laserInicio = reloj;
+        boss.laserDir *= -1;                    // cada activación gira en sentido contrario a la anterior
+        boss.laserFlip = reloj + 1500 + MATRIARCA_GIRO_LASER;   // 1,5 s de aviso + 20 s antes de invertir
+    }
+    if (!quiereLaseres && boss.lasersOn) {
+        boss.lasersOn = false;
+    }
+
+    actualizarLaseresMatriarca(escena, boss, dt);
+}
+
+// ---------- Esferas de energía ----------
+
+function lanzarOrbeMatriarca(escena, boss) {
+
+    let o = escena.add.circle(boss.x, boss.y, 24, 0xffaa00);   // tamaño de un golem
+    o.setStrokeStyle(3, 0xffee88);
+
+    escena.physics.add.existing(o);
+    proyectilesEnemigos.add(o);
+
+    o.daño = 20;
+    o.nace = reloj;
+
+    let ang = Phaser.Math.Angle.Between(boss.x, boss.y, jugador.x, jugador.y) + Phaser.Math.FloatBetween(-0.6, 0.6);
+    escena.physics.velocityFromRotation(ang, 140, o.body.velocity);
+
+    boss.orbes.push(o);
+}
+
+// Siguen al jugador 5 s y luego explotan en mini bolas
+function actualizarOrbesMatriarca(escena, boss) {
+
+    boss.orbes = boss.orbes.filter(o => o.active);
+
+    boss.orbes.forEach(o => {
+
+        if (reloj - o.nace >= 5000) {
+            explotarOrbe(escena, o);
+            return;
+        }
+
+        let a = Phaser.Math.Angle.Between(o.x, o.y, jugador.x, jugador.y);
+        o.body.velocity.x += (Math.cos(a) * 140 - o.body.velocity.x) * 0.04;
+        o.body.velocity.y += (Math.sin(a) * 140 - o.body.velocity.y) * 0.04;
+    });
+
+    boss.orbes = boss.orbes.filter(o => o.active);
+}
+
+function explotarOrbe(escena, o) {
+
+    let x = o.x;
+    let y = o.y;
+    o.destroy();
+
+    let aro = escena.add.circle(x, y, 40, 0xffcc44, 0.5);
+    escena.tweens.add({ targets: aro, scale: 2, alpha: 0, duration: 300, onComplete: () => aro.destroy() });
+
+    let n = 12;
+    let desfase = Math.random() * Math.PI * 2;
+
+    for (let i = 0; i < n; i++) {
+
+        let m = escena.add.circle(x, y, 6, 0xffdd44);
+        escena.physics.add.existing(m);
+        proyectilesEnemigos.add(m);
+
+        m.daño = 8;
+        escena.physics.velocityFromRotation(desfase + i * (Math.PI * 2 / n), 210, m.body.velocity);
+
+        escena.time.delayedCall(3000, () => {
+            if (m && m.active) { m.destroy(); }
+        });
+    }
+}
+
+// ---------- Los Límites (escudo de la Matriarca) ----------
+
+function invocarLimites(escena, boss) {
+
+    boss.limitesHechos = true;
+    boss.escudoActivo = true;
+    boss.limites = [];
+
+    boss.escudoGfx = escena.add.circle(boss.x, boss.y, 110, 0x44ccff, 0.28).setDepth(3);
+    boss.escudoGfx.setStrokeStyle(4, 0x88eeff);
+
+    let L = MATRIARCA_LADO;
+
+    for (let i = 0; i < 5; i++) {
+
+        let l = crearEnemigo(escena, 'Limite', 0xcc66ff, 120, 34);
+
+        let x, y;
+        do {
+            x = Phaser.Math.Between(1200 - L / 2 + 50, 1200 + L / 2 - 50);
+            y = Phaser.Math.Between(1200 - L / 2 + 50, 1200 + L / 2 - 50);
+        } while (
+            Phaser.Math.Distance.Between(x, y, jugador.x, jugador.y) < 250 ||
+            Phaser.Math.Distance.Between(x, y, boss.x, boss.y) < 160
+        );
+
+        l.setPosition(x, y);
+        l.body.reset(x, y);
+        l.body.setCollideWorldBounds(true);
+        l.setStrokeStyle(2, 0xffffff);
+
+        l.estado = 'merodeo';
+        l.estadoDesde = reloj - Phaser.Math.Between(0, 2000);
+        l.ultimaRafaga = reloj - Phaser.Math.Between(0, 1500);
+        l.rafaga = 0;
+        l.proxDisparo = 0;
+        l.dir = 0;
+
+        l.etiqueta = escena.add.text(x, y, 'lim', {
+            fontSize: '13px', fill: '#ffffff', fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(5);
+
+        l.on('destroy', () => { if (l.etiqueta) { l.etiqueta.destroy(); } });
+
+        boss.limites.push(l);
+    }
+
+    mostrarAviso(escena, '¡LOS LÍMITES PROTEGEN A LA MATRIARCA!\nDestrúyelos para romper el escudo', '#88eeff');
+}
+
+// Merodea y dispara ráfagas de 3 -> se detiene y apunta -> embiste -> repite
+function comportamientoLimite(escena, l) {
+
+    let t = reloj - l.estadoDesde;
+
+    if (l.estado === 'merodeo') {
+
+        let dist = Phaser.Math.Distance.Between(l.x, l.y, jugador.x, jugador.y);
+
+        if (dist > 230) {
+            escena.physics.moveToObject(l, jugador, 110);
+        } else {
+            l.body.setVelocity(0);
+        }
+
+        // Ráfaga de 3 proyectiles
+        if (l.rafaga > 0) {
+
+            if (reloj >= l.proxDisparo) {
+
+                l.rafaga--;
+                l.proxDisparo = reloj + 160;
+
+                let p = escena.add.circle(l.x, l.y, 7, 0xcc66ff);
+                escena.physics.add.existing(p);
+                proyectilesEnemigos.add(p);
+
+                p.daño = 10;
+
+                let ang = Phaser.Math.Angle.Between(l.x, l.y, jugador.x, jugador.y);
+                escena.physics.velocityFromRotation(ang, 270, p.body.velocity);
+
+                escena.time.delayedCall(4000, () => {
+                    if (p && p.active) { p.destroy(); }
+                });
+            }
+
+        } else if (reloj - l.ultimaRafaga >= 2500) {
+            l.rafaga = 3;
+            l.ultimaRafaga = reloj;
+            l.proxDisparo = reloj;
+        }
+
+        if (t >= 3500) {
+            l.estado = 'apuntar';
+            l.estadoDesde = reloj;
+        }
+
+    } else if (l.estado === 'apuntar') {
+
+        l.body.setVelocity(0);
+        l.setFillStyle(Math.floor(t / 100) % 2 === 0 ? 0xffffff : 0xcc66ff);
+
+        if (t < 250) {
+            l.dir = Phaser.Math.Angle.Between(l.x, l.y, jugador.x, jugador.y);
+        }
+
+        if (t >= 600) {
+            l.estado = 'embestida';
+            l.estadoDesde = reloj;
+            l.setFillStyle(0xff3366);
+            escena.physics.velocityFromRotation(l.dir, 480, l.body.velocity);
+        }
+
+    } else if (l.estado === 'embestida') {
+
+        if (t >= 700) {
+            l.estado = 'merodeo';
+            l.estadoDesde = reloj;
+            l.setFillStyle(0xcc66ff);
+            l.body.setVelocity(0);
+        }
+    }
+}
+
+// ---------- Láseres giratorios (como las aspas de un ventilador) ----------
+
+function distPuntoSegmento(px, py, x1, y1, x2, y2) {
+
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+    t = Phaser.Math.Clamp(t, 0, 1);
+
+    return Phaser.Math.Distance.Between(px, py, x1 + t * dx, y1 + t * dy);
+}
+
+function actualizarLaseresMatriarca(escena, boss, dt) {
+
+    let g = boss.laserGfx;
+    g.clear();
+
+    if (!boss.lasersOn) { return; }
+
+    let activo = (reloj - boss.laserInicio) >= 1500;   // antes de eso solo es un aviso
+
+    if (activo) {
+
+        boss.laserAng += boss.laserDir * MATRIARCA_VEL_LASER * dt;
+
+        // Cada 20 s invierte la dirección de giro
+        if (reloj >= boss.laserFlip) {
+            boss.laserDir *= -1;
+            boss.laserFlip = reloj + MATRIARCA_GIRO_LASER;
+        }
+    }
+
+    for (let i = 0; i < 4; i++) {
+
+        let a = boss.laserAng + i * (Math.PI / 2);
+        let ex = boss.x + Math.cos(a) * MATRIARCA_LARGO_LASER;
+        let ey = boss.y + Math.sin(a) * MATRIARCA_LARGO_LASER;
+
+        if (activo) {
+
+            g.lineStyle(14, 0xff2255, 0.9);
+            g.lineBetween(boss.x, boss.y, ex, ey);
+            g.lineStyle(4, 0xffffff, 1);
+            g.lineBetween(boss.x, boss.y, ex, ey);
+
+            if (!jugadorMuerto && distPuntoSegmento(jugador.x, jugador.y, boss.x, boss.y, ex, ey) <= 22) {
+                recibirDaño(15);
+            }
+
+        } else {
+            g.lineStyle(3, 0xff2255, 0.4);
+            g.lineBetween(boss.x, boss.y, ex, ey);
+        }
+    }
+}
+
+function limpiarMatriarca(boss) {
+
+    if (boss.arenaGfx) { boss.arenaGfx.destroy(); boss.arenaGfx = null; }
+    if (boss.laserGfx) { boss.laserGfx.destroy(); boss.laserGfx = null; }
+    if (boss.escudoGfx) { boss.escudoGfx.destroy(); boss.escudoGfx = null; }
+
+    (boss.orbes || []).forEach(o => { if (o.active) { o.destroy(); } });
+    boss.orbes = [];
+
+    restaurarLimitesMundo();
+}
+
+</script>
 </body>
 </html>
