@@ -9,36 +9,36 @@
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 
 <style>
-    html,
-    body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        background-color: #111;
-        overflow: hidden;
-        font-family: sans-serif;
-    }
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #111;
+    overflow: hidden;
+    font-family: sans-serif;
+}
 
-    body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-    #canvas-container {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-    }
+#canvas-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
 
-    canvas {
-        display: block;
-        touch-action: none;
-    }
+canvas {
+    display: block;
+    touch-action: none;
+}
 </style>
 
 </head>
@@ -48,10 +48,6 @@
 <div id="canvas-container"></div>
 
 <script>
-
-// ==================================================
-// CONFIGURACIÓN
-// ==================================================
 
 const config = {
 
@@ -114,6 +110,10 @@ let fondoMat;
 let juegoCongelado = false;
 let jugadorMuerto = false;
 
+let fondoMuerte;
+let textoMuerte;
+let textoRondaMuerte;
+
 
 // ==================================================
 // ESTADO DEL JUEGO
@@ -156,47 +156,32 @@ const tiempoInvulnerabilidad = 500;
 const ARMAS = {
 
     PISTOLA: {
-
         nombre: 'Pistola',
-
         balasMax: 6,
-
         dañoGlifo: 20,
         dañoVortice: 20,
         dañoGolem: 10,
-
         velocidadBala: 450,
-
         dif: 'Fácil'
     },
 
     RIFLE: {
-
         nombre: 'Rifle',
-
         balasMax: 15,
-
         dañoGlifo: 10,
         dañoVortice: 10,
         dañoGolem: 10,
-
         velocidadBala: 650,
-
         dif: 'Medio'
     },
 
     ESCOPETA: {
-
         nombre: 'Escopeta',
-
         balasMax: 2,
-
         dañoGlifo: 76,
         dañoVortice: 76,
         dañoGolem: 76,
-
         velocidadBala: 350,
-
         dif: 'Difícil'
     }
 };
@@ -207,7 +192,7 @@ let balasActuales = armaActual.balasMax;
 
 
 // ==================================================
-// PREGUNTAS
+// BANCO DE PREGUNTAS
 // ==================================================
 
 const BANCO_PREGUNTAS = {
@@ -215,38 +200,25 @@ const BANCO_PREGUNTAS = {
     'Fácil': [
 
         {
-
             f: 'y = (3x - 1)⁵',
 
             p1: {
-
                 q: 'Deriva la potencia externa:',
-
                 opciones: [
-
                     'Z) 5(3x-1)⁴',
-
                     'X) 5(3x-1)⁵',
-
                     'C) (3x-1)⁴'
                 ],
-
                 correcta: 0
             },
 
             p2: {
-
                 q: 'Deriva lo interno (3x-1):',
-
                 opciones: [
-
                     'Z) 3x',
-
                     'X) 3',
-
                     'C) 1'
                 ],
-
                 correcta: 1
             }
         }
@@ -255,38 +227,25 @@ const BANCO_PREGUNTAS = {
     'Medio': [
 
         {
-
             f: 'y = cos(x³)',
 
             p1: {
-
                 q: 'Deriva la trigonométrica externa:',
-
                 opciones: [
-
                     'Z) sin(x³)',
-
                     'X) -sin(x³)',
-
                     'C) -cos(x³)'
                 ],
-
                 correcta: 1
             },
 
             p2: {
-
                 q: 'Deriva lo interno (x³):',
-
                 opciones: [
-
                     'Z) 3x²',
-
                     'X) 3x',
-
                     'C) x²'
                 ],
-
                 correcta: 0
             }
         }
@@ -295,38 +254,25 @@ const BANCO_PREGUNTAS = {
     'Difícil': [
 
         {
-
             f: 'y = ln(sin(x))',
 
             p1: {
-
                 q: 'Deriva el logaritmo externo:',
-
                 opciones: [
-
                     'Z) 1/x',
-
                     'X) 1/sin(x)',
-
                     'C) cos(x)'
                 ],
-
                 correcta: 1
             },
 
             p2: {
-
                 q: 'Deriva lo interno (sin(x)):',
-
                 opciones: [
-
                     'Z) cos(x)',
-
                     'X) -cos(x)',
-
                     'C) 1/cos(x)'
                 ],
-
                 correcta: 0
             }
         }
@@ -343,7 +289,6 @@ let pasoActual = 1;
 // ==================================================
 
 function preload() {
-
 }
 
 
@@ -389,11 +334,7 @@ function create() {
     ) {
 
         graphics.moveTo(x, 0);
-
-        graphics.lineTo(
-            x,
-            2400
-        );
+        graphics.lineTo(x, 2400);
     }
 
     for (
@@ -403,11 +344,7 @@ function create() {
     ) {
 
         graphics.moveTo(0, y);
-
-        graphics.lineTo(
-            2400,
-            y
-        );
+        graphics.lineTo(2400, y);
     }
 
     graphics.strokePath();
@@ -425,13 +362,9 @@ function create() {
         0x00ff00
     );
 
-    this.physics.add.existing(
-        jugador
-    );
+    this.physics.add.existing(jugador);
 
-    jugador.body.setCollideWorldBounds(
-        true
-    );
+    jugador.body.setCollideWorldBounds(true);
 
 
     // ==================================================
@@ -545,11 +478,8 @@ function create() {
             20,
             '',
             {
-
                 fontSize: '18px',
-
                 fill: '#ffffff',
-
                 fontStyle: 'bold'
             }
         )
@@ -563,11 +493,8 @@ function create() {
             20,
             '',
             {
-
                 fontSize: '22px',
-
                 fill: '#ffff00',
-
                 fontStyle: 'bold'
             }
         )
@@ -583,20 +510,29 @@ function create() {
     contenedorMatematicas =
         this.add.container(
             400,
-            480
+            470
         )
         .setScrollFactor(0)
         .setDepth(30);
 
+
+    /*
+     * CAMBIO:
+     *
+     * Antes el panel medía 720x200.
+     * Ahora tiene 720x260 para que todas
+     * las líneas de la pregunta y las
+     * respuestas tengan espacio suficiente.
+     */
 
     fondoMat =
         this.add.rectangle(
             0,
             0,
             720,
-            200,
+            260,
             0x0b0b14,
-            0.95
+            0.97
         );
 
 
@@ -606,34 +542,36 @@ function create() {
     );
 
 
+    /*
+     * CAMBIO:
+     *
+     * El texto comienza más arriba
+     * y tiene un ancho menor para que
+     * las opciones puedan distribuirse
+     * sin salirse del panel.
+     */
+
     textoMatematicas =
         this.add.text(
-            -340,
-            -80,
+            -330,
+            -112,
             '',
             {
-
                 fontSize: '15px',
-
                 fill: '#ffffff',
-
                 fontStyle: 'bold',
-
-                lineSpacing: 8,
-
+                lineSpacing: 7,
+                align: 'left',
                 wordWrap: {
-                    width: 680
+                    width: 660
                 }
             }
         );
 
 
     contenedorMatematicas.add([
-
         fondoMat,
-
         textoMatematicas
-
     ]);
 
 
@@ -653,15 +591,10 @@ function create() {
         callback: () => {
 
             if (
-
                 partidaIniciada &&
-
                 tiempoLimite > 0 &&
-
                 !jugadorMuerto
-
             ) {
-
                 tiempoLimite--;
             }
 
@@ -681,11 +614,8 @@ function create() {
         pointer => {
 
             if (
-
                 partidaIniciada &&
-
                 pointer.leftButtonDown()
-
             ) {
 
                 disparar(this);
@@ -721,7 +651,6 @@ function create() {
 function update() {
 
     if (!partidaIniciada) {
-
         return;
     }
 
@@ -749,9 +678,7 @@ function update() {
 
                 if (enemigo.body) {
 
-                    enemigo.body.setVelocity(
-                        0
-                    );
+                    enemigo.body.setVelocity(0);
                 }
             }
         );
@@ -761,24 +688,15 @@ function update() {
 
                 if (proyectil.body) {
 
-                    proyectil.body.setVelocity(
-                        0
-                    );
+                    proyectil.body.setVelocity(0);
                 }
             }
         );
 
         /*
-         * IMPORTANTE:
-         *
-         * Las balas del jugador NO se
-         * detienen aquí.
-         *
-         * Esto conserva el comportamiento
-         * original para que los proyectiles
-         * sigan desplazándose.
+         * Las balas del jugador NO se detienen.
          */
-        
+
         return;
     }
 
@@ -824,7 +742,7 @@ function update() {
 
 
     // ==================================================
-    // MOVIMIENTO JUGADOR
+    // MOVIMIENTO
     // ==================================================
 
     jugador.body.setVelocity(0);
@@ -832,17 +750,13 @@ function update() {
     let velocidad = 300;
 
 
-    if (
-        teclado.IZQUIERDA.isDown
-    ) {
+    if (teclado.IZQUIERDA.isDown) {
 
         jugador.body.setVelocityX(
             -velocidad
         );
 
-    } else if (
-        teclado.DERECHA.isDown
-    ) {
+    } else if (teclado.DERECHA.isDown) {
 
         jugador.body.setVelocityX(
             velocidad
@@ -850,17 +764,13 @@ function update() {
     }
 
 
-    if (
-        teclado.ARRIBA.isDown
-    ) {
+    if (teclado.ARRIBA.isDown) {
 
         jugador.body.setVelocityY(
             -velocidad
         );
 
-    } else if (
-        teclado.ABAJO.isDown
-    ) {
+    } else if (teclado.ABAJO.isDown) {
 
         jugador.body.setVelocityY(
             velocidad
@@ -901,20 +811,14 @@ function update() {
 
                 let distancia =
                     Phaser.Math.Distance.Between(
-
                         enemigo.x,
-
                         enemigo.y,
-
                         jugador.x,
-
                         jugador.y
                     );
 
 
-                if (
-                    distancia > 350
-                ) {
+                if (distancia > 350) {
 
                     this.physics.moveToObject(
                         enemigo,
@@ -924,19 +828,14 @@ function update() {
 
                 } else {
 
-                    enemigo.body.setVelocity(
-                        0
-                    );
+                    enemigo.body.setVelocity(0);
                 }
 
 
                 if (
-
                     !enemigo.ultimoDisparo ||
-
                     this.time.now -
                     enemigo.ultimoDisparo >= 2000
-
                 ) {
 
                     dispararProyectilVortice(
@@ -960,7 +859,6 @@ function update() {
 function redimensionarInterfaz() {
 
     if (!escenaJuego) {
-
         return;
     }
 
@@ -972,14 +870,6 @@ function redimensionarInterfaz() {
         escenaJuego.scale.height;
 
 
-    /*
-     * La escala se basa en la resolución
-     * original de 800x600.
-     *
-     * El mundo NO cambia.
-     * Solo cambia la interfaz.
-     */
-
     const escala =
         Math.max(
 
@@ -990,18 +880,14 @@ function redimensionarInterfaz() {
                 1.5,
 
                 Math.min(
-
                     ancho / 800,
-
                     alto / 600
                 )
             )
         );
 
 
-    // ==================================================
     // HUD
-    // ==================================================
 
     if (textoUI) {
 
@@ -1033,19 +919,17 @@ function redimensionarInterfaz() {
 
 
     // ==================================================
-    // MÓDULO MATEMÁTICO
+    // PREGUNTA MATEMÁTICA
     // ==================================================
 
-    if (
-        contenedorMatematicas
-    ) {
+    if (contenedorMatematicas) {
 
         contenedorMatematicas.setPosition(
 
             ancho / 2,
 
             alto -
-            (120 * escala)
+            (145 * escala)
         );
 
         contenedorMatematicas.setScale(
@@ -1054,16 +938,12 @@ function redimensionarInterfaz() {
     }
 
 
-    // ==================================================
-    // MENÚ PRINCIPAL
-    // ==================================================
+    // MENÚ
 
     if (menuPrincipal) {
 
         menuPrincipal.setPosition(
-
             ancho / 2,
-
             alto / 2
         );
 
@@ -1073,16 +953,10 @@ function redimensionarInterfaz() {
     }
 
 
-    // ==================================================
-    // CONTROLES
-    // ==================================================
-
     if (menuControles) {
 
         menuControles.setPosition(
-
             ancho / 2,
-
             alto / 2
         );
 
@@ -1092,21 +966,47 @@ function redimensionarInterfaz() {
     }
 
 
-    // ==================================================
-    // CRÉDITOS
-    // ==================================================
-
     if (menuCreditos) {
 
         menuCreditos.setPosition(
-
             ancho / 2,
-
             alto / 2
         );
 
         menuCreditos.setScale(
             escala
+        );
+    }
+
+
+    // PANTALLA DE MUERTE
+
+    if (fondoMuerte) {
+
+        fondoMuerte.setPosition(
+            ancho / 2,
+            alto / 2
+        );
+
+        fondoMuerte.setSize(
+            ancho,
+            alto
+        );
+    }
+
+    if (textoMuerte) {
+
+        textoMuerte.setPosition(
+            ancho / 2,
+            alto / 2 - 50
+        );
+    }
+
+    if (textoRondaMuerte) {
+
+        textoRondaMuerte.setPosition(
+            ancho / 2,
+            alto / 2 + 20
         );
     }
 }
@@ -1144,15 +1044,10 @@ function crearMenuPrincipal(escena) {
             -190,
             'CALABOZO DE LA CADENA',
             {
-
                 fontSize: '42px',
-
                 fill: '#ffffff',
-
                 fontStyle: 'bold',
-
                 stroke: '#000000',
-
                 strokeThickness: 8
             }
         )
@@ -1165,11 +1060,8 @@ function crearMenuPrincipal(escena) {
             -140,
             'SUPERVIVENCIA INFINITA',
             {
-
                 fontSize: '16px',
-
                 fill: '#aaaaaa',
-
                 fontStyle: 'bold'
             }
         )
@@ -1178,17 +1070,11 @@ function crearMenuPrincipal(escena) {
 
     let botonJugar =
         crearBoton(
-
             escena,
-
             0,
-
             -60,
-
             '▶  JUGAR',
-
             () => {
-
                 iniciarPartida();
             }
         );
@@ -1196,17 +1082,11 @@ function crearMenuPrincipal(escena) {
 
     let botonControles =
         crearBoton(
-
             escena,
-
             0,
-
             20,
-
             '🎮  CONTROLES',
-
             () => {
-
                 mostrarControles();
             }
         );
@@ -1214,41 +1094,29 @@ function crearMenuPrincipal(escena) {
 
     let botonCreditos =
         crearBoton(
-
             escena,
-
             0,
-
             100,
-
             '📜  CRÉDITOS',
-
             () => {
-
                 mostrarCreditos();
             }
         );
 
 
     menuPrincipal.add([
-
         fondo,
-
         titulo,
-
         subtitulo,
-
         botonJugar,
-
         botonControles,
-
         botonCreditos
     ]);
 }
 
 
 // ==================================================
-// BOTONES
+// BOTÓN
 // ==================================================
 
 function crearBoton(
@@ -1270,13 +1138,10 @@ function crearBoton(
 
     let fondoBoton =
         escena.add.rectangle(
-
             0,
             0,
-
             300,
             60,
-
             0x252538,
             1
         )
@@ -1285,18 +1150,12 @@ function crearBoton(
 
     let textoBoton =
         escena.add.text(
-
             0,
             0,
-
             texto,
-
             {
-
                 fontSize: '25px',
-
                 fill: '#ffffff',
-
                 fontStyle: 'bold'
             }
         )
@@ -1304,9 +1163,7 @@ function crearBoton(
 
 
     boton.add([
-
         fondoBoton,
-
         textoBoton
     ]);
 
@@ -1318,16 +1175,12 @@ function crearBoton(
 
 
     boton.setInteractive(
-
         new Phaser.Geom.Rectangle(
-
             -150,
             -30,
-
             300,
             60
         ),
-
         Phaser.Geom.Rectangle.Contains
     );
 
@@ -1368,7 +1221,6 @@ function crearBoton(
 
     boton.on(
         'pointerdown',
-
         (
             pointer,
             localX,
@@ -1377,7 +1229,6 @@ function crearBoton(
         ) => {
 
             if (event) {
-
                 event.stopPropagation();
             }
 
@@ -1398,9 +1249,7 @@ function iniciarPartida() {
 
     partidaIniciada = true;
 
-    menuPrincipal.setVisible(
-        false
-    );
+    menuPrincipal.setVisible(false);
 
 
     vidaJugador =
@@ -1439,9 +1288,7 @@ function iniciarPartida() {
         1200
     );
 
-    jugador.setAlpha(
-        1
-    );
+    jugador.setAlpha(1);
 
 
     enemigos.clear(
@@ -1460,6 +1307,22 @@ function iniciarPartida() {
     );
 
 
+    if (fondoMuerte) {
+        fondoMuerte.destroy();
+        fondoMuerte = null;
+    }
+
+    if (textoMuerte) {
+        textoMuerte.destroy();
+        textoMuerte = null;
+    }
+
+    if (textoRondaMuerte) {
+        textoRondaMuerte.destroy();
+        textoRondaMuerte = null;
+    }
+
+
     iniciarRonda(
         escenaJuego
     );
@@ -1475,9 +1338,7 @@ function iniciarPartida() {
 
 function mostrarControles() {
 
-    menuPrincipal.setVisible(
-        false
-    );
+    menuPrincipal.setVisible(false);
 
 
     menuControles =
@@ -1491,13 +1352,10 @@ function mostrarControles() {
 
     let fondo =
         escenaJuego.add.rectangle(
-
             0,
             0,
-
             800,
             600,
-
             0x080810,
             0.98
         );
@@ -1505,18 +1363,12 @@ function mostrarControles() {
 
     let titulo =
         escenaJuego.add.text(
-
             0,
             -210,
-
             'CONTROLES',
-
             {
-
                 fontSize: '40px',
-
                 fill: '#ffffff',
-
                 fontStyle: 'bold'
             }
         )
@@ -1525,18 +1377,14 @@ function mostrarControles() {
 
     let controles =
         escenaJuego.add.text(
-
             0,
             -90,
 
             'MOVIMIENTO\n\n' +
 
             'W  →  Arriba\n' +
-
             'A  →  Izquierda\n' +
-
             'S  →  Abajo\n' +
-
             'D  →  Derecha\n\n' +
 
             'COMBATE\n\n' +
@@ -1546,9 +1394,7 @@ function mostrarControles() {
             'ARMAS\n\n' +
 
             '1  →  Pistola\n' +
-
             '2  →  Rifle\n' +
-
             '3  →  Escopeta\n\n' +
 
             'RECARGA\n\n' +
@@ -1556,13 +1402,9 @@ function mostrarControles() {
             'Z / X / C  →  Responder preguntas',
 
             {
-
                 fontSize: '19px',
-
                 fill: '#ffffff',
-
                 align: 'center',
-
                 lineSpacing: 5
             }
         )
@@ -1571,24 +1413,17 @@ function mostrarControles() {
 
     let volver =
         crearBoton(
-
             escenaJuego,
-
             0,
-
             210,
-
             '← VOLVER',
-
             () => {
 
                 menuControles.destroy();
 
                 menuControles = null;
 
-                menuPrincipal.setVisible(
-                    true
-                );
+                menuPrincipal.setVisible(true);
 
                 redimensionarInterfaz();
             }
@@ -1596,13 +1431,9 @@ function mostrarControles() {
 
 
     menuControles.add([
-
         fondo,
-
         titulo,
-
         controles,
-
         volver
     ]);
 
@@ -1617,9 +1448,7 @@ function mostrarControles() {
 
 function mostrarCreditos() {
 
-    menuPrincipal.setVisible(
-        false
-    );
+    menuPrincipal.setVisible(false);
 
 
     menuCreditos =
@@ -1633,13 +1462,10 @@ function mostrarCreditos() {
 
     let fondo =
         escenaJuego.add.rectangle(
-
             0,
             0,
-
             800,
             600,
-
             0x080810,
             0.98
         );
@@ -1647,18 +1473,12 @@ function mostrarCreditos() {
 
     let titulo =
         escenaJuego.add.text(
-
             0,
             -180,
-
             'CRÉDITOS',
-
             {
-
                 fontSize: '40px',
-
                 fill: '#ffffff',
-
                 fontStyle: 'bold'
             }
         )
@@ -1667,7 +1487,6 @@ function mostrarCreditos() {
 
     let texto =
         escenaJuego.add.text(
-
             0,
             -60,
 
@@ -1680,13 +1499,9 @@ function mostrarCreditos() {
             'Proyecto académico',
 
             {
-
                 fontSize: '20px',
-
                 fill: '#ffffff',
-
                 align: 'center',
-
                 lineSpacing: 10
             }
         )
@@ -1695,24 +1510,17 @@ function mostrarCreditos() {
 
     let volver =
         crearBoton(
-
             escenaJuego,
-
             0,
-
             170,
-
             '← VOLVER',
-
             () => {
 
                 menuCreditos.destroy();
 
                 menuCreditos = null;
 
-                menuPrincipal.setVisible(
-                    true
-                );
+                menuPrincipal.setVisible(true);
 
                 redimensionarInterfaz();
             }
@@ -1720,13 +1528,9 @@ function mostrarCreditos() {
 
 
     menuCreditos.add([
-
         fondo,
-
         titulo,
-
         texto,
-
         volver
     ]);
 
@@ -1741,40 +1545,27 @@ function mostrarCreditos() {
 
 function iniciarRonda(escena) {
 
-    generandoNuevaRonda =
-        true;
-
+    generandoNuevaRonda = true;
 
     let cantidadGlifos = 0;
-
     let cantidadVortices = 0;
-
     let cantidadGolems = 0;
 
 
-    if (
-        rondaActual === 1
-    ) {
+    if (rondaActual === 1) {
 
         cantidadGlifos = 5;
 
-    } else if (
-        rondaActual === 2
-    ) {
+    } else if (rondaActual === 2) {
 
         cantidadVortices = 4;
 
-    } else if (
-        rondaActual === 3
-    ) {
+    } else if (rondaActual === 3) {
 
         cantidadGlifos = 6;
-
         cantidadVortices = 4;
 
-    } else if (
-        rondaActual === 4
-    ) {
+    } else if (rondaActual === 4) {
 
         cantidadGolems = 3;
 
@@ -1783,16 +1574,11 @@ function iniciarRonda(escena) {
         let aumento =
             rondaActual - 5;
 
-
         cantidadGlifos =
-            6 +
-            (aumento * 2);
-
+            6 + (aumento * 2);
 
         cantidadVortices =
-            4 +
-            aumento;
-
+            4 + aumento;
 
         cantidadGolems =
             2 +
@@ -1809,13 +1595,9 @@ function iniciarRonda(escena) {
     ) {
 
         crearEnemigo(
-
             escena,
-
             'Glifo',
-
             0x00ffff,
-
             20
         );
     }
@@ -1828,13 +1610,9 @@ function iniciarRonda(escena) {
     ) {
 
         crearEnemigo(
-
             escena,
-
             'Vortice',
-
             0xff00ff,
-
             20
         );
     }
@@ -1847,21 +1625,15 @@ function iniciarRonda(escena) {
     ) {
 
         crearEnemigo(
-
             escena,
-
             'Golem',
-
             0xff5500,
-
             150
         );
     }
 
 
-    generandoNuevaRonda =
-        false;
-
+    generandoNuevaRonda = false;
 
     mostrarRonda();
 
@@ -1876,7 +1648,6 @@ function iniciarRonda(escena) {
 function mostrarRonda() {
 
     if (!textoRonda) {
-
         return;
     }
 
@@ -1891,20 +1662,15 @@ function mostrarRonda() {
 
     escenaJuego.tweens.add({
 
-        targets:
-            textoRonda,
+        targets: textoRonda,
 
-        alpha:
-            0.35,
+        alpha: 0.35,
 
-        duration:
-            700,
+        duration: 700,
 
-        yoyo:
-            true,
+        yoyo: true,
 
-        repeat:
-            2
+        repeat: 2
     });
 }
 
@@ -1916,45 +1682,33 @@ function mostrarRonda() {
 function comprobarFinRonda() {
 
     if (
-
         jugadorMuerto ||
-
         generandoNuevaRonda
-
     ) {
-
         return;
     }
 
 
     let enemigosVivos =
-        enemigos.countActive(
-            true
-        );
+        enemigos.countActive(true);
 
 
     if (
         enemigosVivos <= 0
     ) {
 
-        generandoNuevaRonda =
-            true;
+        generandoNuevaRonda = true;
 
 
         escenaJuego.time.delayedCall(
-
             1000,
-
             () => {
 
                 if (jugadorMuerto) {
-
                     return;
                 }
 
-
                 rondaActual++;
-
 
                 iniciarRonda(
                     escenaJuego
@@ -1977,9 +1731,7 @@ function crearEnemigo(
 ) {
 
     let x;
-
     let y;
-
     let distanciaJugador;
 
 
@@ -2000,10 +1752,8 @@ function crearEnemigo(
 
         distanciaJugador =
             Phaser.Math.Distance.Between(
-
                 x,
                 y,
-
                 jugador.x,
                 jugador.y
             );
@@ -2021,13 +1771,10 @@ function crearEnemigo(
 
     let enemigo =
         escena.add.rectangle(
-
             x,
             y,
-
             tamaño,
             tamaño,
-
             color
         );
 
@@ -2060,15 +1807,10 @@ function crearEnemigo(
 function disparar(escena) {
 
     if (
-
         juegoCongelado ||
-
         jugadorMuerto ||
-
         !partidaIniciada
-
     ) {
-
         return;
     }
 
@@ -2088,45 +1830,27 @@ function disparar(escena) {
     actualizarUI();
 
 
-    // ==================================================
-    // APUNTADO
-    // ==================================================
-
     const puntoMundo =
         escena.cameras.main.getWorldPoint(
-
             mouse.x,
-
             mouse.y
         );
 
 
     const angulo =
         Phaser.Math.Angle.Between(
-
             jugador.x,
-
             jugador.y,
-
             puntoMundo.x,
-
             puntoMundo.y
         );
 
 
-    // ==================================================
-    // BALA
-    // ==================================================
-
     let bala =
         escena.add.circle(
-
             jugador.x,
-
             jugador.y,
-
             6,
-
             0xffff00
         );
 
@@ -2141,39 +1865,20 @@ function disparar(escena) {
     );
 
 
-    /*
-     * ESTA PARTE SE MANTIENE:
-     *
-     * La bala recibe directamente
-     * su velocidad física.
-     */
-
     escena.physics.velocityFromRotation(
-
         angulo,
-
         armaActual.velocidadBala,
-
         bala.body.velocity
     );
 
 
-    // ==================================================
-    // ELIMINACIÓN
-    // ==================================================
-
     escena.time.delayedCall(
-
         5000,
-
         () => {
 
             if (
-
                 bala &&
-
                 bala.active
-
             ) {
 
                 bala.destroy();
@@ -2184,7 +1889,7 @@ function disparar(escena) {
 
 
 // ==================================================
-// PROYECTIL DEL VÓRTICE
+// PROYECTIL VÓRTICE
 // ==================================================
 
 function dispararProyectilVortice(
@@ -2193,26 +1898,18 @@ function dispararProyectilVortice(
 ) {
 
     if (
-
         juegoCongelado ||
-
         jugadorMuerto
-
     ) {
-
         return;
     }
 
 
     let proyectil =
         escena.add.circle(
-
             vortice.x,
-
             vortice.y,
-
             7,
-
             0xff00ff
         );
 
@@ -2229,43 +1926,30 @@ function dispararProyectilVortice(
 
     let angulo =
         Phaser.Math.Angle.Between(
-
             vortice.x,
-
             vortice.y,
-
             jugador.x,
-
             jugador.y
         );
 
 
     escena.physics.velocityFromRotation(
-
         angulo,
-
         220,
-
         proyectil.body.velocity
     );
 
 
-    proyectil.daño =
-        10;
+    proyectil.daño = 10;
 
 
     escena.time.delayedCall(
-
         5000,
-
         () => {
 
             if (
-
                 proyectil &&
-
                 proyectil.active
-
             ) {
 
                 proyectil.destroy();
@@ -2276,7 +1960,7 @@ function dispararProyectilVortice(
 
 
 // ==================================================
-// CONTACTO ENEMIGO
+// CONTACTO
 // ==================================================
 
 function contactoEnemigo(
@@ -2285,13 +1969,9 @@ function contactoEnemigo(
 ) {
 
     if (
-
         jugadorMuerto ||
-
         invulnerable
-
     ) {
-
         return;
     }
 
@@ -2299,7 +1979,6 @@ function contactoEnemigo(
     if (
         enemigo.tipo === 'Vortice'
     ) {
-
         return;
     }
 
@@ -2307,7 +1986,6 @@ function contactoEnemigo(
     if (
         enemigo.tipo === 'Glifo'
     ) {
-
         recibirDaño(10);
     }
 
@@ -2315,14 +1993,13 @@ function contactoEnemigo(
     if (
         enemigo.tipo === 'Golem'
     ) {
-
         recibirDaño(20);
     }
 }
 
 
 // ==================================================
-// PROYECTIL ENEMIGO
+// IMPACTO PROYECTIL
 // ==================================================
 
 function impactoProyectilEnemigo(
@@ -2330,10 +2007,7 @@ function impactoProyectilEnemigo(
     proyectil
 ) {
 
-    if (
-        jugadorMuerto
-    ) {
-
+    if (jugadorMuerto) {
         return;
     }
 
@@ -2341,10 +2015,7 @@ function impactoProyectilEnemigo(
     proyectil.destroy();
 
 
-    if (
-        invulnerable
-    ) {
-
+    if (invulnerable) {
         return;
     }
 
@@ -2354,33 +2025,25 @@ function impactoProyectilEnemigo(
 
 
 // ==================================================
-// DAÑO
+// RECIBIR DAÑO
 // ==================================================
 
-function recibirDaño(
-    cantidad
-) {
+function recibirDaño(cantidad) {
 
     if (
-
         jugadorMuerto ||
-
         invulnerable
-
     ) {
-
         return;
     }
 
 
-    vidaJugador -=
-        cantidad;
+    vidaJugador -= cantidad;
 
 
     if (
         vidaJugador < 0
     ) {
-
         vidaJugador = 0;
     }
 
@@ -2388,31 +2051,20 @@ function recibirDaño(
     actualizarUI();
 
 
-    invulnerable =
-        true;
+    invulnerable = true;
 
-
-    jugador.setAlpha(
-        0.4
-    );
+    jugador.setAlpha(0.4);
 
 
     escenaJuego.time.delayedCall(
-
         tiempoInvulnerabilidad,
-
         () => {
 
-            if (
-                !jugadorMuerto
-            ) {
+            if (!jugadorMuerto) {
 
-                invulnerable =
-                    false;
+                invulnerable = false;
 
-                jugador.setAlpha(
-                    1
-                );
+                jugador.setAlpha(1);
             }
         }
     );
@@ -2433,38 +2085,29 @@ function recibirDaño(
 
 function morirJugador() {
 
-    jugadorMuerto =
-        true;
+    jugadorMuerto = true;
 
 
-    jugador.body.setVelocity(
-        0
-    );
+    jugador.body.setVelocity(0);
 
 
     enemigos.getChildren().forEach(
-
         enemigo => {
 
             if (enemigo.body) {
 
-                enemigo.body.setVelocity(
-                    0
-                );
+                enemigo.body.setVelocity(0);
             }
         }
     );
 
 
     proyectilesEnemigos.getChildren().forEach(
-
         proyectil => {
 
             if (proyectil.body) {
 
-                proyectil.body.setVelocity(
-                    0
-                );
+                proyectil.body.setVelocity(0);
             }
         }
     );
@@ -2479,17 +2122,11 @@ function morirJugador() {
 
     fondoMuerte =
         escenaJuego.add.rectangle(
-
             ancho / 2,
-
             alto / 2,
-
             ancho,
-
             alto,
-
             0x000000,
-
             0.75
         )
         .setScrollFactor(0)
@@ -2498,19 +2135,12 @@ function morirJugador() {
 
     textoMuerte =
         escenaJuego.add.text(
-
             ancho / 2,
-
             alto / 2 - 50,
-
             'HAS MUERTO',
-
             {
-
                 fontSize: '48px',
-
                 fill: '#ff0000',
-
                 fontStyle: 'bold'
             }
         )
@@ -2521,19 +2151,12 @@ function morirJugador() {
 
     textoRondaMuerte =
         escenaJuego.add.text(
-
             ancho / 2,
-
             alto / 2 + 20,
-
             `Llegaste a la ronda ${rondaActual}\n\nRecarga la página para volver a jugar`,
-
             {
-
                 fontSize: '20px',
-
                 fill: '#ffffff',
-
                 align: 'center'
             }
         )
@@ -2585,8 +2208,7 @@ function impactarEnemigo(
     }
 
 
-    enemigo.hp -=
-        daño;
+    enemigo.hp -= daño;
 
 
     if (
@@ -2611,23 +2233,20 @@ function cambiarArma(
     armaActual =
         nuevaArma;
 
-
     balasActuales =
         armaActual.balasMax;
-
 
     actualizarUI();
 }
 
 
 // ==================================================
-// ACTUALIZAR HUD
+// ACTUALIZAR UI
 // ==================================================
 
 function actualizarUI() {
 
     if (!textoUI) {
-
         return;
     }
 
@@ -2684,17 +2303,14 @@ function actualizarUI() {
 
 
 // ==================================================
-// RECARGA
+// INICIAR RECARGA
 // ==================================================
 
 function iniciarRecarga() {
 
-    juegoCongelado =
-        true;
+    juegoCongelado = true;
 
-
-    pasoActual =
-        1;
+    pasoActual = 1;
 
 
     let lista =
@@ -2706,9 +2322,7 @@ function iniciarRecarga() {
     preguntaActual =
         lista[
             Phaser.Math.Between(
-
                 0,
-
                 lista.length - 1
             )
         ];
@@ -2731,25 +2345,41 @@ function mostrarPaso() {
 
     let paso =
         pasoActual === 1
-
             ? preguntaActual.p1
-
             : preguntaActual.p2;
 
 
+    /*
+     * CAMBIO PRINCIPAL:
+     *
+     * Las opciones ahora están separadas
+     * en líneas individuales.
+     *
+     * Así nunca quedan una encima de otra
+     * ni se salen del cuadro.
+     */
+
     textoMatematicas.setText(
 
-        `⚠️ MÓDULO DE DERIVACIÓN REQUERIDO (REGLA DE LA CADENA)\n\n` +
+        `⚠️ MÓDULO DE DERIVACIÓN REQUERIDO\n` +
+
+        `(REGLA DE LA CADENA)\n\n` +
 
         `Función actual: ${preguntaActual.f}\n\n` +
 
         `PASO ${pasoActual}: ${paso.q}\n\n` +
 
-        `Presiona la tecla correspondiente:\n\n` +
+        `${paso.opciones[0]}\n` +
 
-        `👉 ${paso.opciones[0]}    👉 ${paso.opciones[1]}    👉 ${paso.opciones[2]}\n\n` +
+        `${paso.opciones[1]}\n` +
 
-        `Z = primera opción     X = segunda opción     C = tercera opción`
+        `${paso.opciones[2]}\n\n` +
+
+        `Z = primera opción\n` +
+
+        `X = segunda opción\n` +
+
+        `C = tercera opción`
     );
 }
 
@@ -2760,19 +2390,14 @@ function mostrarPaso() {
 
 function manejarRecarga() {
 
-    if (
-        !preguntaActual
-    ) {
-
+    if (!preguntaActual) {
         return;
     }
 
 
     let paso =
         pasoActual === 1
-
             ? preguntaActual.p1
-
             : preguntaActual.p2;
 
 
@@ -2812,7 +2437,6 @@ function manejarRecarga() {
     if (
         seleccion === -1
     ) {
-
         return;
     }
 
@@ -2825,8 +2449,7 @@ function manejarRecarga() {
             pasoActual === 1
         ) {
 
-            pasoActual =
-                2;
+            pasoActual = 2;
 
             mostrarPaso();
 
@@ -2855,25 +2478,19 @@ function manejarRecarga() {
     } else {
 
         fondoMat.setStrokeStyle(
-
             3,
-
             0xff0000
         );
 
 
         escenaJuego.time.delayedCall(
-
             300,
-
             () => {
 
                 if (fondoMat) {
 
                     fondoMat.setStrokeStyle(
-
                         3,
-
                         0xffaa00
                     );
                 }
