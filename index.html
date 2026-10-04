@@ -6,25 +6,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calabozo de la Cadena</title>
 
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+
 <style>
-html,
-body{
-    width:100%;
-    height:100%;
+html, body{
     margin:0;
     padding:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#111;
 }
 
 body{
-    background:#1a1a24;
-    overflow:hidden;
-    font-family:Arial,sans-serif;
-}
-
-#canvas-container{
-    width:100vw;
-    height:100vh;
-    overflow:hidden;
+    display:flex;
+    justify-content:center;
+    align-items:center;
 }
 
 canvas{
@@ -33,42 +30,18 @@ canvas{
 }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-
 </head>
 
 <body>
 
-<div id="canvas-container"></div>
-
 <script>
 
-const ANCHO_MUNDO=2400;
-const ALTO_MUNDO=2400;
+let escenaPrincipal;
 
 let jugador;
 let enemigos;
 let proyectiles;
 let proyectilesEnemigos;
-
-let teclado;
-
-let partidaIniciada=false;
-let juegoCongelado=false;
-let jugadorMuerto=false;
-let invulnerable=false;
-
-let vidaJugador=100;
-let vidaMaxima=100;
-
-let tiempoLimite=900;
-let tiempoRestante=tiempoLimite;
-
-let rondaActual=1;
-let generandoNuevaRonda=false;
-
-let armaActual="PISTOLA";
-let municion=6;
 
 let textoVida;
 let textoTiempo;
@@ -76,2457 +49,1970 @@ let textoArma;
 let textoMunicion;
 let textoEnemigos;
 let textoRonda;
-
-let contadorTiempo;
-let escenaPrincipal;
+let textoControles;
 
 let menuPrincipal;
-let overlayActual=null;
+let overlayActual = null;
 
+let partidaIniciada = false;
+let juegoCongelado = false;
+let jugadorMuerto = false;
+let jugadorInvulnerable = false;
 
-/* =========================
-   ARMAS
-========================= */
+let vidaJugador = 100;
+let vidaMaxima = 100;
 
-const ARMAS={
+let tiempoRestante = 900;
 
-PISTOLA:{
-maxMunicion:6,
-danoGlifo:20,
-danoVortice:20,
-danoGolem:10,
-velocidad:450,
-dificultad:"Fácil"
-},
+let rondaActual = 0;
 
-RIFLE:{
-maxMunicion:15,
-danoGlifo:10,
-danoVortice:10,
-danoGolem:10,
-velocidad:650,
-dificultad:"Medio"
-},
+let armaActual = 0;
+let municionActual = 6;
 
-ESCOPETA:{
-maxMunicion:2,
-danoGlifo:76,
-danoVortice:76,
-danoGolem:76,
-velocidad:350,
-dificultad:"Difícil"
-}
+let temporizadorTiempo;
+let temporizadorVortices;
 
-};
-
-
-/* =========================
-   PREGUNTAS
-========================= */
-
-const BANCO_PREGUNTAS={
-
-Fácil:[
-{
-pregunta:"y = (3x - 1)⁵\n¿Cuál es la derivada?",
-opciones:[
-"5(3x - 1)⁴",
-"5(3x - 1)⁵",
-"(3x - 1)⁴"
-],
-correcta:0
-},
-{
-pregunta:"En y = (3x - 1)⁵,\n¿cuál es la derivada interna?",
-opciones:[
-"3x",
-"3",
-"1"
-],
-correcta:1
-}
-],
-
-Medio:[
-{
-pregunta:"y = cos(x³)\n¿Cuál es la derivada externa?",
-opciones:[
-"sin(x³)",
-"-sin(x³)",
-"-cos(x³)"
-],
-correcta:1
-},
-{
-pregunta:"y = cos(x³)\n¿Cuál es la derivada interna?",
-opciones:[
-"3x²",
-"3x",
-"x²"
-],
-correcta:0
-}
-],
-
-Difícil:[
-{
-pregunta:"y = ln(sin(x))\n¿Cuál es la derivada externa?",
-opciones:[
-"1/x",
-"1/sin(x)",
-"cos(x)"
-],
-correcta:1
-},
-{
-pregunta:"y = ln(sin(x))\n¿Cuál es la derivada interna?",
-opciones:[
-"cos(x)",
-"-cos(x)",
-"1/cos(x)"
-],
-correcta:0
-}
-]
-
-};
-
-
-/* =========================
-   CONFIGURACIÓN
-========================= */
-
-const config={
-
-type:Phaser.AUTO,
-
-parent:"canvas-container",
-
-backgroundColor:"#1a1a24",
-
-scale:{
-    mode:Phaser.Scale.RESIZE,
-    autoCenter:Phaser.Scale.CENTER_BOTH
-},
-
-physics:{
-    default:"arcade",
-    arcade:{
-        gravity:{
-            y:0
-        },
-        debug:false
+const ARMAS = [
+    {
+        nombre:"PISTOLA",
+        maxMunicion:6,
+        danoGlifo:20,
+        danoVortice:20,
+        danoGolem:10,
+        velocidad:450,
+        dificultad:"Fácil"
+    },
+    {
+        nombre:"RIFLE",
+        maxMunicion:15,
+        danoGlifo:10,
+        danoVortice:10,
+        danoGolem:10,
+        velocidad:650,
+        dificultad:"Medio"
+    },
+    {
+        nombre:"ESCOPETA",
+        maxMunicion:2,
+        danoGlifo:76,
+        danoVortice:76,
+        danoGolem:76,
+        velocidad:350,
+        dificultad:"Difícil"
     }
-},
+];
 
-scene:{
-    create:crear,
-    update:actualizar
-}
+const BANCO_PREGUNTAS = {
+    "Fácil":{
+        funcion:"y = (3x - 1)^5",
+        preguntas:[
+            {
+                texto:"¿Cuál es la derivada de la función externa?",
+                opciones:[
+                    "5(3x - 1)^4",
+                    "3(3x - 1)^4",
+                    "(3x - 1)^4",
+                    "5(3x - 1)"
+                ],
+                correcta:0
+            },
+            {
+                texto:"¿Cuál es la derivada de la función interna?",
+                opciones:[
+                    "5x^4",
+                    "3",
+                    "3x",
+                    "1"
+                ],
+                correcta:1
+            }
+        ]
+    },
 
+    "Medio":{
+        funcion:"y = cos(x^3)",
+        preguntas:[
+            {
+                texto:"¿Cuál es la derivada de la función externa?",
+                opciones:[
+                    "cos(x^3)",
+                    "-sin(x^3)",
+                    "sin(x^3)",
+                    "-cos(x^3)"
+                ],
+                correcta:1
+            },
+            {
+                texto:"¿Cuál es la derivada de la función interna?",
+                opciones:[
+                    "3x²",
+                    "x²",
+                    "3x",
+                    "x³"
+                ],
+                correcta:0
+            }
+        ]
+    },
+
+    "Difícil":{
+        funcion:"y = ln(sin(x))",
+        preguntas:[
+            {
+                texto:"¿Cuál es la derivada de la función externa?",
+                opciones:[
+                    "sin(x)",
+                    "1/sin(x)",
+                    "cos(x)",
+                    "1/x"
+                ],
+                correcta:1
+            },
+            {
+                texto:"¿Cuál es la derivada de la función interna?",
+                opciones:[
+                    "sin(x)",
+                    "1/x",
+                    "cos(x)",
+                    "-sin(x)"
+                ],
+                correcta:2
+            }
+        ]
+    }
 };
 
-new Phaser.Game(config);
 
+const config = {
+    type:Phaser.AUTO,
 
-/* =========================
-   CREAR
-========================= */
+    width:800,
+    height:600,
 
-function crear(){
+    backgroundColor:"#151515",
 
-escenaPrincipal=this;
+    physics:{
+        default:"arcade",
+        arcade:{
+            gravity:{y:0},
+            debug:false
+        }
+    },
 
+    scale:{
+        mode:Phaser.Scale.RESIZE,
+        autoCenter:Phaser.Scale.CENTER_BOTH
+    },
+
+    scene:{
+        preload:function(){},
 
-/* MUNDO */
+        create:function(){
+            escenaPrincipal=this;
 
-this.physics.world.setBounds(
-0,
-0,
-ANCHO_MUNDO,
-ALTO_MUNDO
-);
+            this.cameras.main.setBounds(0,0,2400,2400);
+            this.physics.world.setBounds(0,0,2400,2400);
 
+            crearMundo(this);
+            crearMenuPrincipal(this);
 
-/* MAPA */
+            this.input.setTopOnly(true);
 
-const graphics=this.add.graphics();
+            this.scale.on("resize",function(){
+                redimensionarInterfaz();
+            });
+        },
 
-graphics.lineStyle(
-1,
-0x292936,
-1
-);
-
-for(
-let x=0;
-x<=ANCHO_MUNDO;
-x+=80
-){
-
-graphics.lineBetween(
-x,
-0,
-x,
-ALTO_MUNDO
-);
-
-}
-
-for(
-let y=0;
-y<=ALTO_MUNDO;
-y+=80
-){
-
-graphics.lineBetween(
-0,
-y,
-ANCHO_MUNDO,
-y
-);
-
-}
-
-
-/* JUGADOR */
-
-jugador=this.add.rectangle(
-1200,
-1200,
-32,
-32,
-0x00ff66
-);
-
-this.physics.add.existing(
-jugador
-);
-
-jugador.body.setCollideWorldBounds(
-true
-);
-
-
-/* GRUPOS */
-
-enemigos=this.physics.add.group();
-
-proyectiles=this.physics.add.group();
-
-proyectilesEnemigos=
-this.physics.add.group();
-
-
-/* CÁMARA */
-
-this.cameras.main.setBounds(
-0,
-0,
-ANCHO_MUNDO,
-ALTO_MUNDO
-);
-
-this.cameras.main.startFollow(
-jugador,
-true
-);
-
-
-/* TECLADO */
-
-teclado=this.input.keyboard.addKeys({
-
-ARRIBA:
-Phaser.Input.Keyboard.KeyCodes.W,
-
-ABAJO:
-Phaser.Input.Keyboard.KeyCodes.S,
-
-IZQUIERDA:
-Phaser.Input.Keyboard.KeyCodes.A,
-
-DERECHA:
-Phaser.Input.Keyboard.KeyCodes.D,
-
-UNO:
-Phaser.Input.Keyboard.KeyCodes.ONE,
-
-DOS:
-Phaser.Input.Keyboard.KeyCodes.TWO,
-
-TRES:
-Phaser.Input.Keyboard.KeyCodes.THREE,
-
-Z:
-Phaser.Input.Keyboard.KeyCodes.Z,
-
-X:
-Phaser.Input.Keyboard.KeyCodes.X,
-
-C:
-Phaser.Input.Keyboard.KeyCodes.C
-
-});
-
-
-/* HUD */
-
-crearHUD(this);
-
-
-/* COLISIONES */
-
-this.physics.add.overlap(
-proyectiles,
-enemigos,
-impactoProyectilEnemigo,
-null,
-this
-);
-
-this.physics.add.overlap(
-jugador,
-enemigos,
-contactoEnemigo,
-null,
-this
-);
-
-this.physics.add.overlap(
-jugador,
-proyectilesEnemigos,
-impactoProyectilEnemigoJugador,
-null,
-this
-);
-
-
-/* DISPARO */
-
-this.input.on(
-"pointerdown",
-disparar,
-this
-);
-
-
-/* TEMPORIZADOR */
-
-contadorTiempo=this.time.addEvent({
-
-delay:1000,
-
-loop:true,
-
-callback:()=>{
-
-if(
-partidaIniciada &&
-!jugadorMuerto &&
-tiempoRestante>0
-){
-
-tiempoRestante--;
-
-actualizarHUD();
-
-}
-
-}
-
-});
-
-
-/* RESPONSIVE */
-
-this.scale.on(
-"resize",
-redimensionarInterfaz,
-this
-);
-
-this.input.setTopOnly(
-true
-);
-
-
-/* MENÚ */
-
-crearMenuPrincipal(
-this
-);
-
-actualizarHUD();
-
-}
-
-
-/* =========================
-   UPDATE
-========================= */
-
-function actualizar(){
-
-if(
-!partidaIniciada ||
-jugadorMuerto
-)
-return;
-
-
-/* MOVIMIENTO */
-
-if(!juegoCongelado){
-
-jugador.body.setVelocity(
-0
-);
-
-if(teclado.ARRIBA.isDown)
-jugador.body.setVelocityY(
--250
-);
-
-if(teclado.ABAJO.isDown)
-jugador.body.setVelocityY(
-250
-);
-
-if(teclado.IZQUIERDA.isDown)
-jugador.body.setVelocityX(
--250
-);
-
-if(teclado.DERECHA.isDown)
-jugador.body.setVelocityX(
-250
-);
-
-
-/* CAMBIO DE ARMA */
-
-if(
-Phaser.Input.Keyboard.JustDown(
-teclado.UNO
-)
-)
-cambiarArma(
-"PISTOLA"
-);
-
-if(
-Phaser.Input.Keyboard.JustDown(
-teclado.DOS
-)
-)
-cambiarArma(
-"RIFLE"
-);
-
-if(
-Phaser.Input.Keyboard.JustDown(
-teclado.TRES
-)
-)
-cambiarArma(
-"ESCOPETA"
-);
-
-
-/* ENEMIGOS */
-
-enemigos.getChildren().forEach(
-enemigo=>{
-
-if(!enemigo.active)
-return;
-
-if(enemigo.tipo==="Glifo")
-perseguirJugador(
-enemigo,
-160
-);
-
-else if(
-enemigo.tipo==="Vortice"
-)
-comportamientoVortice(
-enemigo
-);
-
-else if(
-enemigo.tipo==="Golem"
-)
-perseguirJugador(
-enemigo,
-50
-);
-
-});
-
-}
-
-
-/* DETENER DURANTE PREGUNTA */
-
-if(juegoCongelado){
-
-jugador.body.setVelocity(
-0
-);
-
-enemigos.getChildren().forEach(
-e=>{
-
-if(e.body)
-e.body.setVelocity(
-0,
-0
-);
-
-});
-
-proyectiles.getChildren().forEach(
-b=>{
-
-if(b.body)
-b.body.setVelocity(
-0,
-0
-);
-
-});
-
-proyectilesEnemigos
-.getChildren()
-.forEach(
-b=>{
-
-if(b.body)
-b.body.setVelocity(
-0,
-0
-);
-
-});
-
-}
-
-
-comprobarFinRonda();
-
-}
-
-
-/* =========================
-   HUD
-========================= */
-
-function estiloHUD(){
-
-return{
-
-fontSize:"18px",
-
-color:"#ffffff",
-
-fontStyle:"bold",
-
-stroke:"#000000",
-
-strokeThickness:4
-
+        update:function(){
+            if(!partidaIniciada){
+                return;
+            }
+
+            if(jugadorMuerto){
+                return;
+            }
+
+            if(juegoCongelado){
+
+                if(jugador && jugador.body){
+                    jugador.body.setVelocity(0);
+                }
+
+                enemigos.children.iterate(function(enemigo){
+                    if(enemigo && enemigo.body){
+                        enemigo.body.setVelocity(0,0);
+                    }
+                });
+
+                proyectiles.children.iterate(function(bala){
+                    if(bala && bala.body){
+                        bala.body.setVelocity(0,0);
+                    }
+                });
+
+                proyectilesEnemigos.children.iterate(function(bala){
+                    if(bala && bala.body){
+                        bala.body.setVelocity(0,0);
+                    }
+                });
+
+                return;
+            }
+
+            controlarJugador();
+
+            enemigos.children.iterate(function(enemigo){
+
+                if(!enemigo || !enemigo.active){
+                    return;
+                }
+
+                if(enemigo.tipo === "Glifo"){
+
+                    const angulo = Phaser.Math.Angle.Between(
+                        enemigo.x,
+                        enemigo.y,
+                        jugador.x,
+                        jugador.y
+                    );
+
+                    enemigo.body.setVelocity(
+                        Math.cos(angulo)*160,
+                        Math.sin(angulo)*160
+                    );
+                }
+
+                else if(enemigo.tipo === "Vortice"){
+
+                    const distancia = Phaser.Math.Distance.Between(
+                        enemigo.x,
+                        enemigo.y,
+                        jugador.x,
+                        jugador.y
+                    );
+
+                    if(distancia > 350){
+
+                        const angulo = Phaser.Math.Angle.Between(
+                            enemigo.x,
+                            enemigo.y,
+                            jugador.x,
+                            jugador.y
+                        );
+
+                        enemigo.body.setVelocity(
+                            Math.cos(angulo)*80,
+                            Math.sin(angulo)*80
+                        );
+
+                    }else{
+
+                        enemigo.body.setVelocity(0,0);
+                    }
+                }
+
+                else if(enemigo.tipo === "Golem"){
+
+                    const angulo = Phaser.Math.Angle.Between(
+                        enemigo.x,
+                        enemigo.y,
+                        jugador.x,
+                        jugador.y
+                    );
+
+                    enemigo.body.setVelocity(
+                        Math.cos(angulo)*50,
+                        Math.sin(angulo)*50
+                    );
+                }
+            });
+        }
+    }
 };
 
+const juego = new Phaser.Game(config);
+
+
+function crearMundo(scene){
+
+    const grafico = scene.add.graphics();
+
+    grafico.lineStyle(1,0x292929,1);
+
+    for(let x=0;x<=2400;x+=80){
+        grafico.lineBetween(x,0,x,2400);
+    }
+
+    for(let y=0;y<=2400;y+=80){
+        grafico.lineBetween(0,y,2400,y);
+    }
+
+    grafico.lineStyle(4,0x555555,1);
+    grafico.strokeRect(0,0,2400,2400);
+
+    jugador = scene.add.rectangle(
+        1200,
+        1200,
+        32,
+        32,
+        0x00ff00
+    );
+
+    scene.physics.add.existing(jugador);
+
+    jugador.body.setCollideWorldBounds(true);
+
+    enemigos = scene.physics.add.group();
+    proyectiles = scene.physics.add.group();
+    proyectilesEnemigos = scene.physics.add.group();
+
+    scene.cameras.main.startFollow(
+        jugador,
+        true,
+        0.08,
+        0.08
+    );
+
+    scene.physics.add.overlap(
+        jugador,
+        enemigos,
+        recibirDanioContacto,
+        null,
+        scene
+    );
+
+    scene.physics.add.overlap(
+        jugador,
+        proyectilesEnemigos,
+        recibirDanioProyectil,
+        null,
+        scene
+    );
+
+    scene.physics.add.overlap(
+        proyectiles,
+        enemigos,
+        impactoProyectil,
+        null,
+        scene
+    );
 }
 
 
-function crearHUD(escena){
+function crearMenuPrincipal(scene){
 
-textoVida=
-escena.add.text(
-20,
-20,
-"",
-estiloHUD()
-);
+    menuPrincipal = scene.add.container(
+        scene.scale.width/2,
+        scene.scale.height/2
+    );
 
-textoTiempo=
-escena.add.text(
-20,
-50,
-"",
-estiloHUD()
-);
+    const fondo = scene.add.rectangle(
+        0,
+        0,
+        520,
+        500,
+        0x101010,
+        0.96
+    );
 
-textoArma=
-escena.add.text(
-20,
-80,
-"",
-estiloHUD()
-);
+    fondo.setStrokeStyle(
+        4,
+        0x777777,
+        1
+    );
 
-textoMunicion=
-escena.add.text(
-20,
-110,
-"",
-estiloHUD()
-);
+    const titulo = scene.add.text(
+        0,
+        -175,
+        "CALABOZO DE LA CADENA",
+        {
+            fontFamily:"Arial",
+            fontSize:"30px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            align:"center"
+        }
+    ).setOrigin(0.5);
 
-textoEnemigos=
-escena.add.text(
-20,
-140,
-"",
-estiloHUD()
-);
+    const subtitulo = scene.add.text(
+        0,
+        -130,
+        "Un desafío de cálculo y supervivencia",
+        {
+            fontFamily:"Arial",
+            fontSize:"16px",
+            color:"#bbbbbb"
+        }
+    ).setOrigin(0.5);
 
+    const botonJugar = crearBotonMenu(
+        scene,
+        0,
+        -55,
+        "▶ JUGAR",
+        function(){
+            iniciarPartida();
+        }
+    );
 
-textoRonda=
-escena.add.text(
-0,
-20,
-"",
-{
-fontSize:"24px",
-color:"#ffffff",
-fontStyle:"bold",
-stroke:"#000000",
-strokeThickness:5
+    const botonControles = crearBotonMenu(
+        scene,
+        0,
+        20,
+        "🎮 CONTROLES",
+        function(){
+            mostrarControles();
+        }
+    );
+
+    const botonCreditos = crearBotonMenu(
+        scene,
+        0,
+        95,
+        "📜 CRÉDITOS",
+        function(){
+            mostrarCreditos();
+        }
+    );
+
+    const info = scene.add.text(
+        0,
+        165,
+        "Rondas infinitas • Enemigos • Cálculo",
+        {
+            fontFamily:"Arial",
+            fontSize:"14px",
+            color:"#777777"
+        }
+    ).setOrigin(0.5);
+
+    menuPrincipal.add([
+        fondo,
+        titulo,
+        subtitulo,
+        botonJugar,
+        botonControles,
+        botonCreditos,
+        info
+    ]);
+
+    menuPrincipal.setDepth(1000);
+
+    redimensionarInterfaz();
 }
-);
 
 
-[
-textoVida,
-textoTiempo,
-textoArma,
-textoMunicion,
-textoEnemigos,
-textoRonda
-].forEach(
-t=>{
+function crearBotonMenu(scene,x,y,texto,accion){
 
-t.setScrollFactor(0);
+    const contenedor = scene.add.container(x,y);
 
-t.setDepth(200);
+    const fondo = scene.add.rectangle(
+        0,
+        0,
+        300,
+        60,
+        0x252525
+    );
 
-});
+    fondo.setStrokeStyle(
+        2,
+        0x777777,
+        1
+    );
+
+    const textoBoton = scene.add.text(
+        0,
+        0,
+        texto,
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            fontStyle:"bold",
+            color:"#ffffff"
+        }
+    ).setOrigin(0.5);
+
+    contenedor.add([
+        fondo,
+        textoBoton
+    ]);
+
+    contenedor.setSize(300,60);
+
+    contenedor.setInteractive(
+        new Phaser.Geom.Rectangle(
+            -150,
+            -30,
+            300,
+            60
+        ),
+        Phaser.Geom.Rectangle.Contains
+    );
+
+    contenedor.input.cursor = "pointer";
+
+    contenedor.on("pointerover",function(){
+        fondo.setFillStyle(0x3b3b3b);
+        fondo.setStrokeStyle(2,0xffffff,1);
+    });
+
+    contenedor.on("pointerout",function(){
+        fondo.setFillStyle(0x252525);
+        fondo.setStrokeStyle(2,0x777777,1);
+    });
+
+    contenedor.on("pointerdown",function(pointer){
+        pointer.event.stopPropagation();
+        accion();
+    });
+
+    return contenedor;
+}
 
 
+function iniciarPartida(){
+
+    if(menuPrincipal){
+        menuPrincipal.setVisible(false);
+    }
+
+    partidaIniciada=true;
+    juegoCongelado=false;
+    jugadorMuerto=false;
+
+    vidaJugador=100;
+    tiempoRestante=900;
+
+    rondaActual=0;
+
+    armaActual=0;
+    municionActual=ARMAS[armaActual].maxMunicion;
+
+    enemigos.clear(true,true);
+    proyectiles.clear(true,true);
+    proyectilesEnemigos.clear(true,true);
+
+    jugador.setPosition(1200,1200);
+    jugador.setAlpha(1);
+
+    crearHUD();
+
+    iniciarRonda();
+
+    temporizadorTiempo = escenaPrincipal.time.addEvent({
+        delay:1000,
+        loop:true,
+        callback:function(){
+
+            if(
+                partidaIniciada &&
+                !jugadorMuerto &&
+                tiempoRestante > 0
+            ){
+                tiempoRestante--;
+
+                actualizarHUD();
+
+                if(tiempoRestante <= 0){
+                    mostrarDerrotaTiempo();
+                }
+            }
+        }
+    });
+
+    actualizarHUD();
+}
+
+
+function crearHUD(){
+
+    if(textoVida){
+        textoVida.destroy();
+    }
+
+    if(textoTiempo){
+        textoTiempo.destroy();
+    }
+
+    if(textoArma){
+        textoArma.destroy();
+    }
+
+    if(textoMunicion){
+        textoMunicion.destroy();
+    }
+
+    if(textoEnemigos){
+        textoEnemigos.destroy();
+    }
+
+    if(textoRonda){
+        textoRonda.destroy();
+    }
+
+    if(textoControles){
+        textoControles.destroy();
+    }
+
+    textoVida = escenaPrincipal.add.text(
+        20,
+        20,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            stroke:"#000000",
+            strokeThickness:4
+        }
+    ).setScrollFactor(0).setDepth(100);
+
+    textoTiempo = escenaPrincipal.add.text(
+        20,
+        50,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            stroke:"#000000",
+            strokeThickness:4
+        }
+    ).setScrollFactor(0).setDepth(100);
+
+    textoArma = escenaPrincipal.add.text(
+        20,
+        80,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            stroke:"#000000",
+            strokeThickness:4
+        }
+    ).setScrollFactor(0).setDepth(100);
+
+    textoMunicion = escenaPrincipal.add.text(
+        20,
+        110,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            stroke:"#000000",
+            strokeThickness:4
+        }
+    ).setScrollFactor(0).setDepth(100);
+
+    textoEnemigos = escenaPrincipal.add.text(
+        20,
+        140,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            stroke:"#000000",
+            strokeThickness:4
+        }
+    ).setScrollFactor(0).setDepth(100);
+
+    textoRonda = escenaPrincipal.add.text(
+        escenaPrincipal.scale.width-20,
+        20,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"24px",
+            fontStyle:"bold",
+            color:"#ffffff",
+            stroke:"#000000",
+            strokeThickness:4,
+            align:"right"
+        }
+    )
+    .setOrigin(1,0)
+    .setScrollFactor(0)
+    .setDepth(100);
+
+    textoControles = escenaPrincipal.add.text(
+        20,
+        escenaPrincipal.scale.height-25,
+        "WASD / FLECHAS: MOVER    •    CLICK: DISPARAR    •    1/2/3: CAMBIAR ARMA",
+        {
+            fontFamily:"Arial",
+            fontSize:"15px",
+            color:"#cccccc",
+            stroke:"#000000",
+            strokeThickness:3
+        }
+    )
+    .setOrigin(0,1)
+    .setScrollFactor(0)
+    .setDepth(100);
+
+    actualizarHUD();
+    redimensionarInterfaz();
 }
 
 
 function actualizarHUD(){
 
-if(!textoVida)
-return;
+    if(!textoVida){
+        return;
+    }
 
+    textoVida.setText(
+        "❤️ VIDA: " +
+        Math.max(0,vidaJugador) +
+        "/" +
+        vidaMaxima
+    );
 
-textoVida.setText(
-`❤️ VIDA: ${vidaJugador} / ${vidaMaxima}`
-);
+    textoTiempo.setText(
+        "⏱️ TIEMPO RESTANTE: " +
+        formatearTiempo(tiempoRestante)
+    );
 
-textoTiempo.setText(
-`⏱️ TIEMPO RESTANTE: ${formatearTiempo(tiempoRestante)}`
-);
+    textoArma.setText(
+        "💥 ARMA: " +
+        ARMAS[armaActual].nombre +
+        " (" +
+        ARMAS[armaActual].dificultad +
+        ")"
+    );
 
-textoArma.setText(
-`💥 ARMA: ${armaActual} (${ARMAS[armaActual].dificultad})`
-);
+    textoMunicion.setText(
+        "⚡ MUNICIÓN: " +
+        municionActual +
+        "/" +
+        ARMAS[armaActual].maxMunicion
+    );
 
-textoMunicion.setText(
-`⚡ MUNICIÓN: ${municion} / ${ARMAS[armaActual].maxMunicion}`
-);
+    textoEnemigos.setText(
+        "👾 ENEMIGOS RESTANTES: " +
+        enemigos.countActive(true)
+    );
 
-textoEnemigos.setText(
-`👾 ENEMIGOS RESTANTES: ${enemigos?enemigos.countActive(true):0}`
-);
-
-textoRonda.setText(
-`RONDA ${rondaActual}`
-);
-
-redimensionarInterfaz();
-
+    textoRonda.setText(
+        "RONDA " +
+        rondaActual
+    );
 }
 
 
 function formatearTiempo(segundos){
 
-return String(
-Math.floor(segundos/60)
-).padStart(
-2,
-"0"
-)
-+
-":"
-+
-String(
-segundos%60
-).padStart(
-2,
-"0"
-);
+    const minutos = Math.floor(segundos/60);
+    const segundosRestantes = segundos % 60;
 
+    return (
+        String(minutos).padStart(2,"0") +
+        ":" +
+        String(segundosRestantes).padStart(2,"0")
+    );
 }
 
 
-/* =========================
-   INTERFAZ RESPONSIVA
-========================= */
+function controlarJugador(){
 
-function redimensionarInterfaz(){
+    if(!jugador || !jugador.body){
+        return;
+    }
 
-if(!escenaPrincipal)
-return;
+    const velocidad=220;
 
+    let vx=0;
+    let vy=0;
 
-const ancho=
-escenaPrincipal.scale.width;
+    const teclado=escenaPrincipal.input.keyboard;
 
-const alto=
-escenaPrincipal.scale.height;
+    if(
+        teclado.addKey("W").isDown ||
+        teclado.addKey("UP").isDown
+    ){
+        vy=-velocidad;
+    }
 
+    if(
+        teclado.addKey("S").isDown ||
+        teclado.addKey("DOWN").isDown
+    ){
+        vy=velocidad;
+    }
 
-/*
-   ESCALA BASE.
+    if(
+        teclado.addKey("A").isDown ||
+        teclado.addKey("LEFT").isDown
+    ){
+        vx=-velocidad;
+    }
 
-   No modifica el mundo ni la física.
-   Solo modifica elementos de interfaz.
-*/
+    if(
+        teclado.addKey("D").isDown ||
+        teclado.addKey("RIGHT").isDown
+    ){
+        vx=velocidad;
+    }
 
-const escala=
-Phaser.Math.Clamp(
-Math.min(
-ancho/800,
-alto/600
-),
-0.75,
-1.35
-);
+    if(vx !== 0 && vy !== 0){
 
+        const factor=1/Math.sqrt(2);
 
-/* HUD */
+        vx*=factor;
+        vy*=factor;
+    }
 
-const hud=[
-textoVida,
-textoTiempo,
-textoArma,
-textoMunicion,
-textoEnemigos
-];
-
-hud.forEach(
-(t,i)=>{
-
-if(!t)
-return;
-
-t.setScale(
-escala
-);
-
-t.setPosition(
-20,
-20+(i*30)
-);
-
-});
-
-
-/* RONDA */
-
-if(textoRonda){
-
-textoRonda.setScale(
-escala
-);
-
-textoRonda.setOrigin(
-1,
-0
-);
-
-textoRonda.setPosition(
-ancho-20,
-20
-);
-
+    jugador.body.setVelocity(vx,vy);
 }
 
-
-/* CONTROLES */
-
-if(
-escenaPrincipal.textoControles
-){
-
-escenaPrincipal.textoControles.setScale(
-escala
-);
-
-escenaPrincipal.textoControles.setOrigin(
-0,
-1
-);
-
-escenaPrincipal.textoControles.setPosition(
-20,
-alto-20
-);
-
-}
-
-
-/* MENÚ */
-
-if(menuPrincipal){
-
-menuPrincipal.setPosition(
-ancho/2,
-alto/2
-);
-
-menuPrincipal.setScale(
-escala
-);
-
-}
-
-
-/* OVERLAY */
-
-if(overlayActual){
-
-overlayActual.setPosition(
-ancho/2,
-alto/2
-);
-
-overlayActual.setScale(
-escala
-);
-
-}
-
-}
-
-
-/* =========================
-   DISPARO
-========================= */
 
 function disparar(pointer){
 
-if(
-!partidaIniciada ||
-juegoCongelado ||
-jugadorMuerto
-)
-return;
+    if(
+        !partidaIniciada ||
+        jugadorMuerto ||
+        juegoCongelado
+    ){
+        return;
+    }
 
+    if(municionActual <= 0){
+        iniciarRecargaMatematica();
+        return;
+    }
 
-if(municion<=0){
+    const puntoMundo =
+        escenaPrincipal.cameras.main.getWorldPoint(
+            pointer.x,
+            pointer.y
+        );
 
-iniciarRecargaMatematica();
+    const angulo =
+        Phaser.Math.Angle.Between(
+            jugador.x,
+            jugador.y,
+            puntoMundo.x,
+            puntoMundo.y
+        );
 
-return;
+    const bala = escenaPrincipal.add.circle(
+        jugador.x,
+        jugador.y,
+        7,
+        0xffff00
+    );
 
+    escenaPrincipal.physics.add.existing(bala);
+
+    bala.dano = obtenerDanioArma();
+
+    proyectiles.add(bala);
+
+    bala.body.setVelocity(
+        Math.cos(angulo) * ARMAS[armaActual].velocidad,
+        Math.sin(angulo) * ARMAS[armaActual].velocidad
+    );
+
+    municionActual--;
+
+    actualizarHUD();
+
+    escenaPrincipal.time.delayedCall(
+        5000,
+        function(){
+            if(bala && bala.active){
+                bala.destroy();
+            }
+        }
+    );
+
+    if(municionActual <= 0){
+        iniciarRecargaMatematica();
+    }
 }
 
 
-/*
-   IMPORTANTE:
-
-   Se obtiene la posición real del mouse
-   en coordenadas del MUNDO mediante la cámara.
-
-   Esto funciona aunque la ventana cambie
-   de resolución.
-*/
-
-const puntoMundo=
-escenaPrincipal.cameras.main.getWorldPoint(
-pointer.x,
-pointer.y
+escenaPrincipal.input.on(
+    "pointerdown",
+    function(pointer){
+        if(pointer.leftButtonDown()){
+            disparar(pointer);
+        }
+    }
 );
 
 
-const angulo=
-Phaser.Math.Angle.Between(
-jugador.x,
-jugador.y,
-puntoMundo.x,
-puntoMundo.y
-);
+function obtenerDanioArma(){
 
+    const arma=ARMAS[armaActual];
 
-/* CREAR PROYECTIL */
-
-const bala=
-escenaPrincipal.add.circle(
-jugador.x,
-jugador.y,
-7,
-0xffff00
-);
-
-
-/*
-   Arcade Physics normal.
-*/
-
-escenaPrincipal.physics.add.existing(
-bala
-);
-
-
-/*
-   MOVIMIENTO DEL PROYECTIL.
-
-   NO se modifica manualmente velocity.x/y.
-*/
-
-bala.body.setVelocity(
-Math.cos(angulo) *
-ARMAS[armaActual].velocidad,
-
-Math.sin(angulo) *
-ARMAS[armaActual].velocidad
-);
-
-
-/* DAÑO */
-
-bala.dano=
-ARMAS[armaActual].danoGlifo;
-
-bala.danoVortice=
-ARMAS[armaActual].danoVortice;
-
-bala.danoGolem=
-ARMAS[armaActual].danoGolem;
-
-
-/* GRUPO */
-
-proyectiles.add(
-bala
-);
-
-
-/* DURACIÓN */
-
-escenaPrincipal.time.delayedCall(
-5000,
-()=>{
-
-if(bala.active)
-bala.destroy();
-
-}
-);
-
-
-municion--;
-
-actualizarHUD();
-
-
-if(municion<=0)
-iniciarRecargaMatematica();
-
+    return {
+        Glifo:arma.danoGlifo,
+        Vortice:arma.danoVortice,
+        Golem:arma.danoGolem
+    };
 }
 
 
-/* =========================
-   CAMBIO DE ARMA
-========================= */
+function cambiarArma(indice){
 
-function cambiarArma(arma){
+    if(
+        !partidaIniciada ||
+        jugadorMuerto ||
+        juegoCongelado
+    ){
+        return;
+    }
 
-armaActual=arma;
+    armaActual=indice;
 
-municion=
-ARMAS[arma].maxMunicion;
+    municionActual=
+        ARMAS[armaActual].maxMunicion;
 
-actualizarHUD();
-
+    actualizarHUD();
 }
 
 
-/* =========================
-   ENEMIGOS
-========================= */
-
-function crearEnemigo(
-escena,
-tipo
-){
-
-let x,y;
-
-do{
-
-x=Phaser.Math.Between(
-100,
-2300
+escenaPrincipal.input.keyboard.on(
+    "keydown-ONE",
+    function(){
+        cambiarArma(0);
+    }
 );
 
-y=Phaser.Math.Between(
-100,
-2300
+escenaPrincipal.input.keyboard.on(
+    "keydown-TWO",
+    function(){
+        cambiarArma(1);
+    }
 );
 
-}
-while(
-Phaser.Math.Distance.Between(
-x,
-y,
-jugador.x,
-jugador.y
-)<400
+escenaPrincipal.input.keyboard.on(
+    "keydown-THREE",
+    function(){
+        cambiarArma(2);
+    }
 );
 
 
-let color;
-let tamano;
-let vida;
-let velocidad;
+function iniciarRonda(){
 
+    rondaActual++;
 
-if(tipo==="Glifo"){
+    const posiciones = [];
 
-color=0x00ffff;
+    let cantidadGlifos=0;
+    let cantidadVortices=0;
+    let cantidadGolems=0;
 
-tamano=32;
+    if(rondaActual===1){
 
-vida=20;
+        cantidadGlifos=5;
 
-velocidad=160;
+    }else if(rondaActual===2){
 
-}
+        cantidadVortices=4;
 
+    }else if(rondaActual===3){
 
-if(tipo==="Vortice"){
+        cantidadGlifos=6;
+        cantidadVortices=4;
 
-color=0xff00ff;
+    }else if(rondaActual===4){
 
-tamano=32;
+        cantidadGolems=3;
 
-vida=20;
+    }else{
 
-velocidad=80;
+        const aumento=rondaActual-5;
 
-}
+        cantidadGlifos=6+(aumento*2);
+        cantidadVortices=4+aumento;
+        cantidadGolems=
+            2+Math.floor(aumento/2);
+    }
 
+    for(let i=0;i<cantidadGlifos;i++){
+        crearEnemigo("Glifo");
+    }
 
-if(tipo==="Golem"){
+    for(let i=0;i<cantidadVortices;i++){
+        crearEnemigo("Vortice");
+    }
 
-color=0xff8800;
+    for(let i=0;i<cantidadGolems;i++){
+        crearEnemigo("Golem");
+    }
 
-tamano=48;
-
-vida=150;
-
-velocidad=50;
-
+    actualizarHUD();
 }
 
 
-const enemigo=
-escena.add.rectangle(
-x,
-y,
-tamano,
-tamano,
-color
-);
+function crearEnemigo(tipo){
 
+    let x;
+    let y;
 
-escena.physics.add.existing(
-enemigo
-);
+    do{
 
+        x=Phaser.Math.Between(100,2300);
+        y=Phaser.Math.Between(100,2300);
 
-enemigo.body.setCollideWorldBounds(
-true
-);
+    }while(
+        Phaser.Math.Distance.Between(
+            x,
+            y,
+            jugador.x,
+            jugador.y
+        ) < 400
+    );
 
+    let enemigo;
 
-enemigo.tipo=tipo;
+    if(tipo==="Glifo"){
 
-enemigo.vida=vida;
+        enemigo=escenaPrincipal.add.rectangle(
+            x,
+            y,
+            32,
+            32,
+            0x00ffff
+        );
 
-enemigo.vidaMaxima=vida;
+        enemigo.vida=20;
+        enemigo.tipo="Glifo";
+        enemigo.danoContacto=10;
+    }
 
-enemigo.velocidad=velocidad;
+    else if(tipo==="Vortice"){
 
-enemigo.ultimoDisparo=0;
+        enemigo=escenaPrincipal.add.circle(
+            x,
+            y,
+            24,
+            0xff00ff
+        );
 
+        enemigo.vida=20;
+        enemigo.tipo="Vortice";
+        enemigo.danoContacto=0;
 
-enemigos.add(
-enemigo
-);
+        enemigo.ultimoDisparo=0;
+    }
 
+    else if(tipo==="Golem"){
+
+        enemigo=escenaPrincipal.add.rectangle(
+            x,
+            y,
+            48,
+            48,
+            0xff8800
+        );
+
+        enemigo.vida=150;
+        enemigo.tipo="Golem";
+        enemigo.danoContacto=20;
+    }
+
+    escenaPrincipal.physics.add.existing(enemigo);
+
+    enemigo.body.setCollideWorldBounds(true);
+
+    enemigos.add(enemigo);
+
+    if(tipo==="Vortice"){
+
+        temporizadorVortices =
+            escenaPrincipal.time.addEvent({
+                delay:2000,
+                loop:true,
+                callback:function(){
+
+                    if(
+                        !enemigo.active ||
+                        !partidaIniciada ||
+                        jugadorMuerto ||
+                        juegoCongelado
+                    ){
+                        return;
+                    }
+
+                    const distancia =
+                        Phaser.Math.Distance.Between(
+                            enemigo.x,
+                            enemigo.y,
+                            jugador.x,
+                            jugador.y
+                        );
+
+                    if(distancia <= 600){
+                        disparoVortice(enemigo);
+                    }
+                }
+            });
+    }
 }
 
 
-function perseguirJugador(
-enemigo,
-velocidad
-){
+function disparoVortice(enemigo){
 
-if(juegoCongelado){
+    if(!enemigo || !enemigo.active){
+        return;
+    }
 
-enemigo.body.setVelocity(
-0,
-0
-);
+    const angulo =
+        Phaser.Math.Angle.Between(
+            enemigo.x,
+            enemigo.y,
+            jugador.x,
+            jugador.y
+        );
 
-return;
+    const bala=escenaPrincipal.add.circle(
+        enemigo.x,
+        enemigo.y,
+        8,
+        0xff00ff
+    );
 
+    escenaPrincipal.physics.add.existing(bala);
+
+    bala.dano=10;
+
+    proyectilesEnemigos.add(bala);
+
+    bala.body.setVelocity(
+        Math.cos(angulo)*220,
+        Math.sin(angulo)*220
+    );
+
+    escenaPrincipal.time.delayedCall(
+        5000,
+        function(){
+            if(bala && bala.active){
+                bala.destroy();
+            }
+        }
+    );
 }
 
 
-const angulo=
-Phaser.Math.Angle.Between(
-enemigo.x,
-enemigo.y,
-jugador.x,
-jugador.y
-);
+function recibirDanioContacto(jugadorActual,enemigo){
 
+    if(
+        jugadorMuerto ||
+        jugadorInvulnerable ||
+        juegoCongelado
+    ){
+        return;
+    }
 
-enemigo.body.setVelocity(
-Math.cos(angulo)*velocidad,
-Math.sin(angulo)*velocidad
-);
+    if(!enemigo.active){
+        return;
+    }
 
+    const dano=enemigo.danoContacto || 0;
+
+    if(dano<=0){
+        return;
+    }
+
+    recibirDanio(dano);
 }
 
 
-/* =========================
-   VORTICE
-========================= */
+function recibirDanioProyectil(jugadorActual,bala){
 
-function comportamientoVortice(
-enemigo
-){
+    if(!bala || !bala.active){
+        return;
+    }
 
-if(juegoCongelado){
+    const dano=bala.dano || 10;
 
-enemigo.body.setVelocity(
-0,
-0
-);
+    bala.destroy();
 
-return;
+    if(
+        jugadorMuerto ||
+        juegoCongelado
+    ){
+        return;
+    }
 
+    if(jugadorInvulnerable){
+        return;
+    }
+
+    recibirDanio(dano);
 }
 
-
-const distancia=
-Phaser.Math.Distance.Between(
-enemigo.x,
-enemigo.y,
-jugador.x,
-jugador.y
-);
-
-
-if(distancia>350)
-
-perseguirJugador(
-enemigo,
-80
-);
-
-else
-
-enemigo.body.setVelocity(
-0,
-0
-);
-
-
-const ahora=
-escenaPrincipal.time.now;
-
-
-if(
-distancia<=600 &&
-ahora-enemigo.ultimoDisparo>2000
-){
-
-disparoVortice(
-enemigo
-);
-
-enemigo.ultimoDisparo=
-ahora;
-
-}
-
-}
-
-
-/* =========================
-   PROYECTIL VORTICE
-========================= */
-
-function disparoVortice(
-enemigo
-){
-
-const angulo=
-Phaser.Math.Angle.Between(
-enemigo.x,
-enemigo.y,
-jugador.x,
-jugador.y
-);
-
-
-const bala=
-escenaPrincipal.add.circle(
-enemigo.x,
-enemigo.y,
-8,
-0xff00ff
-);
-
-
-escenaPrincipal.physics.add.existing(
-bala
-);
-
-
-/*
-   MISMO SISTEMA FÍSICO
-   QUE EL PROYECTIL DEL JUGADOR.
-*/
-
-bala.body.setVelocity(
-Math.cos(angulo)*220,
-Math.sin(angulo)*220
-);
-
-
-bala.dano=10;
-
-
-proyectilesEnemigos.add(
-bala
-);
-
-
-escenaPrincipal.time.delayedCall(
-5000,
-()=>{
-
-if(bala.active)
-bala.destroy();
-
-}
-);
-
-}
-
-
-/* =========================
-   DAÑO PROYECTILES
-========================= */
-
-function impactoProyectilEnemigo(
-bala,
-enemigo
-){
-
-if(
-!bala.active ||
-!enemigo.active
-)
-return;
-
-
-let dano=bala.dano;
-
-
-if(enemigo.tipo==="Vortice")
-dano=bala.danoVortice;
-
-
-if(enemigo.tipo==="Golem")
-dano=bala.danoGolem;
-
-
-enemigo.vida-=dano;
-
-bala.destroy();
-
-
-if(enemigo.vida<=0)
-enemigo.destroy();
-
-
-actualizarHUD();
-
-}
-
-
-function impactoProyectilEnemigoJugador(
-jugador,
-bala
-){
-
-if(!bala.active)
-return;
-
-
-bala.destroy();
-
-
-if(invulnerable)
-return;
-
-
-recibirDanio(
-bala.dano
-);
-
-}
-
-
-function contactoEnemigo(
-jugador,
-enemigo
-){
-
-if(
-!enemigo.active ||
-enemigo.tipo==="Vortice" ||
-invulnerable
-)
-return;
-
-
-recibirDanio(
-enemigo.tipo==="Golem"
-?
-20
-:
-10
-);
-
-}
-
-
-/* =========================
-   DAÑO JUGADOR
-========================= */
 
 function recibirDanio(dano){
 
-if(
-invulnerable ||
-jugadorMuerto
-)
-return;
+    if(
+        jugadorMuerto ||
+        jugadorInvulnerable
+    ){
+        return;
+    }
 
+    vidaJugador-=dano;
 
-vidaJugador-=dano;
+    actualizarHUD();
 
+    if(vidaJugador<=0){
 
-if(vidaJugador<0)
-vidaJugador=0;
+        vidaJugador=0;
 
+        actualizarHUD();
 
-actualizarHUD();
+        jugadorMuerto=true;
+        juegoCongelado=true;
 
+        jugador.body.setVelocity(0);
 
-invulnerable=true;
+        mostrarMuerte();
 
-jugador.setAlpha(
-0.4
-);
+        return;
+    }
 
+    jugadorInvulnerable=true;
+    jugador.setAlpha(0.4);
 
-escenaPrincipal.time.delayedCall(
-500,
-()=>{
+    escenaPrincipal.time.delayedCall(
+        500,
+        function(){
 
-invulnerable=false;
+            jugadorInvulnerable=false;
 
-if(jugador.active)
-jugador.setAlpha(
-1
-);
-
-}
-);
-
-
-if(vidaJugador<=0)
-matarJugador();
-
-}
-
-
-function matarJugador(){
-
-jugadorMuerto=true;
-
-juegoCongelado=true;
-
-mostrarPantallaMuerte();
-
+            if(jugador && jugador.active){
+                jugador.setAlpha(1);
+            }
+        }
+    );
 }
 
 
-/* =========================
-   RONDAS
-========================= */
+function impactoProyectil(bala,enemigo){
 
-function iniciarRonda(
-escena
-){
+    if(
+        !bala ||
+        !bala.active ||
+        !enemigo ||
+        !enemigo.active
+    ){
+        return;
+    }
 
-generandoNuevaRonda=false;
+    bala.destroy();
 
-let glifos=0;
+    let dano=0;
 
-let vortices=0;
+    if(enemigo.tipo==="Glifo"){
+        dano=ARMAS[armaActual].danoGlifo;
+    }
 
-let golems=0;
+    else if(enemigo.tipo==="Vortice"){
+        dano=ARMAS[armaActual].danoVortice;
+    }
 
+    else if(enemigo.tipo==="Golem"){
+        dano=ARMAS[armaActual].danoGolem;
+    }
 
-if(rondaActual===1)
+    enemigo.vida-=dano;
 
-glifos=5;
+    if(enemigo.vida<=0){
 
+        if(enemigo.tipo==="Vortice"){
+            // El temporizador asociado deja de disparar
+            // porque el enemigo queda inactivo.
+        }
 
-else if(rondaActual===2)
+        enemigo.destroy();
 
-vortices=4;
-
-
-else if(rondaActual===3){
-
-glifos=6;
-
-vortices=4;
-
-}
-
-
-else if(rondaActual===4)
-
-golems=3;
-
-
-else{
-
-const aumento=
-rondaActual-5;
-
-glifos=
-6+aumento*2;
-
-vortices=
-4+aumento;
-
-golems=
-2+Math.floor(
-aumento/2
-);
-
-}
-
-
-for(
-let i=0;
-i<glifos;
-i++
-)
-
-crearEnemigo(
-escena,
-"Glifo"
-);
-
-
-for(
-let i=0;
-i<vortices;
-i++
-)
-
-crearEnemigo(
-escena,
-"Vortice"
-);
-
-
-for(
-let i=0;
-i<golems;
-i++
-)
-
-crearEnemigo(
-escena,
-"Golem"
-);
-
-
-actualizarHUD();
-
+        comprobarFinRonda();
+    }
 }
 
 
 function comprobarFinRonda(){
 
-if(
-!partidaIniciada ||
-jugadorMuerto ||
-generandoNuevaRonda
-)
-return;
+    if(
+        enemigos.countActive(true)===0 &&
+        partidaIniciada &&
+        !jugadorMuerto
+    ){
 
+        escenaPrincipal.time.delayedCall(
+            1000,
+            function(){
 
-if(
-enemigos.countActive(true)===0
-){
+                if(
+                    partidaIniciada &&
+                    !jugadorMuerto &&
+                    enemigos.countActive(true)===0
+                ){
+                    iniciarRonda();
+                }
+            }
+        );
+    }
 
-generandoNuevaRonda=true;
-
-
-escenaPrincipal.time.delayedCall(
-1000,
-()=>{
-
-if(jugadorMuerto)
-return;
-
-
-rondaActual++;
-
-iniciarRonda(
-escenaPrincipal
-);
-
-}
-);
-
+    actualizarHUD();
 }
 
-}
-
-
-/* =========================
-   RECARGA
-========================= */
 
 function iniciarRecargaMatematica(){
 
-if(
-juegoCongelado ||
-jugadorMuerto
-)
-return;
+    if(
+        juegoCongelado ||
+        jugadorMuerto
+    ){
+        return;
+    }
 
+    juegoCongelado=true;
 
-juegoCongelado=true;
+    jugador.body.setVelocity(0);
 
-
-const preguntas=
-BANCO_PREGUNTAS[
-ARMAS[armaActual].dificultad
-];
-
-
-mostrarPregunta(
-preguntas[0],
-0,
-preguntas
-);
-
+    mostrarPregunta();
 }
 
 
-function mostrarPregunta(
-pregunta,
-indice,
-preguntas
-){
-
-if(overlayActual)
-overlayActual.destroy();
-
-
-const escena=
-escenaPrincipal;
-
-
-overlayActual=
-escena.add.container(
-escena.scale.width/2,
-escena.scale.height/2
-);
-
-
-overlayActual.setScrollFactor(
-0
-);
-
-overlayActual.setDepth(
-500
-);
-
-
-const fondo=
-escena.add.rectangle(
-0,
-0,
-Math.min(
-escena.scale.width*.85,
-650
-),
-Math.min(
-escena.scale.height*.75,
-400
-),
-0x11111a,
-.97
-);
-
-
-const titulo=
-escena.add.text(
-0,
--130,
-"RECARGA MATEMÁTICA",
-{
-fontSize:"28px",
-color:"#ffff00",
-fontStyle:"bold"
-}
-);
-
-titulo.setOrigin(
-.5
-);
-
-
-const preguntaTexto=
-escena.add.text(
-0,
--65,
-pregunta.pregunta,
-{
-fontSize:"20px",
-color:"#ffffff",
-align:"center",
-wordWrap:{
-width:Math.min(
-escena.scale.width*.72,
-560
-)
-}
-}
-);
-
-preguntaTexto.setOrigin(
-.5
-);
-
-
-overlayActual.add(
-fondo
-);
-
-overlayActual.add(
-titulo
-);
-
-overlayActual.add(
-preguntaTexto
-);
-
-
-const letras=[
-"Z",
-"X",
-"C"
-];
-
-
-pregunta.opciones.forEach(
-(opcion,i)=>{
-
-const texto=
-escena.add.text(
-0,
-30+i*55,
-`${letras[i]}) ${opcion}`,
-{
-fontSize:"19px",
-color:"#ffffff",
-align:"center"
-}
-);
-
-texto.setOrigin(
-.5
-);
-
-overlayActual.add(
-texto
-);
-
-});
-
-
-escena.input.keyboard.once(
-"keydown-Z",
-()=>responderPregunta(
-0,
-pregunta,
-indice,
-preguntas
-)
-);
-
-escena.input.keyboard.once(
-"keydown-X",
-()=>responderPregunta(
-1,
-pregunta,
-indice,
-preguntas
-)
-);
-
-escena.input.keyboard.once(
-"keydown-C",
-()=>responderPregunta(
-2,
-pregunta,
-indice,
-preguntas
-);
-
-
-redimensionarInterfaz();
-
-}
-
-
-function responderPregunta(
-respuesta,
-pregunta,
-indice,
-preguntas
-){
-
-if(!juegoCongelado)
-return;
-
-
-if(
-respuesta===pregunta.correcta
-){
-
-if(
-indice+1<
-preguntas.length
-){
-
-mostrarPregunta(
-preguntas[indice+1],
-indice+1,
-preguntas
-);
-
-}
-else{
-
-municion=
-ARMAS[armaActual].maxMunicion;
-
-juegoCongelado=false;
-
-
-if(overlayActual){
-
-overlayActual.destroy();
-
-overlayActual=null;
-
-}
-
-
-actualizarHUD();
-
-}
-
-}
-else{
-
-escenaPrincipal.cameras.main.flash(
-150,
-255,
-0,
-0
-);
-
-}
-
-}
-
-
-/* =========================
-   MENÚ
-========================= */
-
-function crearMenuPrincipal(
-escena
-){
-
-menuPrincipal=
-escena.add.container(
-escena.scale.width/2,
-escena.scale.height/2
-);
-
-menuPrincipal.setScrollFactor(
-0
-);
-
-menuPrincipal.setDepth(
-100
-);
-
-
-const fondo=
-escena.add.rectangle(
-0,
-0,
-10000,
-10000,
-0x101018,
-.92
-);
-
-menuPrincipal.add(
-fondo
-);
-
-
-const titulo=
-escena.add.text(
-0,
--150,
-"CALABOZO DE LA CADENA",
-{
-fontSize:"42px",
-color:"#ffffff",
-fontStyle:"bold",
-stroke:"#000000",
-strokeThickness:7,
-align:"center"
-}
-);
-
-titulo.setOrigin(
-.5
-);
-
-menuPrincipal.add(
-titulo
-);
-
-
-menuPrincipal.add(
-crearBoton(
-escena,
-"▶ JUGAR",
-0,
--40,
-()=>{
-
-menuPrincipal.setVisible(
-false
-);
-
-iniciarPartida();
-
-}
-)
-);
-
-
-menuPrincipal.add(
-crearBoton(
-escena,
-"🎮 CONTROLES",
-0,
-40,
-()=>{
-
-menuPrincipal.setVisible(
-false
-);
-
-mostrarControles(
-escena
-);
-
-}
-)
-);
-
-
-menuPrincipal.add(
-crearBoton(
-escena,
-"📜 CRÉDITOS",
-0,
-120,
-()=>{
-
-menuPrincipal.setVisible(
-false
-);
-
-mostrarCreditos(
-escena
-);
-
-}
-)
-);
-
+function mostrarPregunta(){
+
+    const dificultad =
+        ARMAS[armaActual].dificultad;
+
+    const banco =
+        BANCO_PREGUNTAS[dificultad];
+
+    const preguntas=banco.preguntas;
+
+    let indice=0;
+
+    const preguntaActual=preguntas[indice];
+
+    const overlay=escenaPrincipal.add.container(
+        escenaPrincipal.scale.width/2,
+        escenaPrincipal.scale.height/2
+    );
+
+    overlayActual=overlay;
+
+    const fondo=escenaPrincipal.add.rectangle(
+        0,
+        0,
+        700,
+        500,
+        0x111111,
+        0.98
+    );
+
+    fondo.setStrokeStyle(
+        4,
+        0xffffff,
+        1
+    );
+
+    const titulo=escenaPrincipal.add.text(
+        0,
+        -205,
+        "RECARGA MATEMÁTICA",
+        {
+            fontFamily:"Arial",
+            fontSize:"30px",
+            fontStyle:"bold",
+            color:"#ffffff"
+        }
+    ).setOrigin(0.5);
+
+    const funcion=escenaPrincipal.add.text(
+        0,
+        -160,
+        banco.funcion,
+        {
+            fontFamily:"Arial",
+            fontSize:"24px",
+            color:"#00ffff"
+        }
+    ).setOrigin(0.5);
+
+    const preguntaTexto=escenaPrincipal.add.text(
+        -300,
+        -105,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            color:"#ffffff",
+            wordWrap:{
+                width:600
+            }
+        }
+    );
+
+    const opcionesTexto=escenaPrincipal.add.text(
+        -300,
+        -40,
+        "",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            color:"#ffffff",
+            lineSpacing:12,
+            wordWrap:{
+                width:600
+            }
+        }
+    );
+
+    const mensaje=escenaPrincipal.add.text(
+        0,
+        175,
+        "Presiona Z, X o C para responder",
+        {
+            fontFamily:"Arial",
+            fontSize:"18px",
+            color:"#aaaaaa"
+        }
+    ).setOrigin(0.5);
+
+    overlay.add([
+        fondo,
+        titulo,
+        funcion,
+        preguntaTexto,
+        opcionesTexto,
+        mensaje
+    ]);
+
+    overlay.setDepth(2000);
+
+    function actualizarPregunta(){
+
+        const pregunta=preguntas[indice];
+
+        preguntaTexto.setText(
+            (indice+1)+". "+
+            pregunta.texto
+        );
+
+        opcionesTexto.setText(
+            "Z) "+pregunta.opciones[0]+
+            "\nX) "+pregunta.opciones[1]+
+            "\nC) "+pregunta.opciones[2]+
+            "\n\nDificultad: "+dificultad
+        );
+    }
+
+    function responderPregunta(
+        respuesta,
+        pregunta,
+        indicePregunta
+    ){
+
+        if(
+            !overlayActual ||
+            !overlayActual.active
+        ){
+            return;
+        }
+
+        if(
+            respuesta===
+            pregunta.correcta
+        ){
+
+            indice++;
+
+            if(indice>=preguntas.length){
+
+                overlay.destroy();
+
+                if(overlayActual===overlay){
+                    overlayActual=null;
+                }
+
+                juegoCongelado=false;
+
+                municionActual=
+                    ARMAS[armaActual].maxMunicion;
+
+                actualizarHUD();
+
+                return;
+            }
+
+            actualizarPregunta();
+
+        }else{
+
+            fondo.setFillStyle(
+                0x660000,
+                0.98
+            );
+
+            escenaPrincipal.time.delayedCall(
+                180,
+                function(){
+
+                    if(
+                        fondo &&
+                        fondo.active
+                    ){
+                        fondo.setFillStyle(
+                            0x111111,
+                            0.98
+                        );
+                    }
+                }
+            );
+        }
+    }
+
+    escenaPrincipal.input.keyboard.once(
+        "keydown-Z",
+        function(){
+            responderPregunta(
+                0,
+                preguntas[indice],
+                indice
+            );
+        }
+    );
+
+    escenaPrincipal.input.keyboard.once(
+        "keydown-X",
+        function(){
+            responderPregunta(
+                1,
+                preguntas[indice],
+                indice
+            );
+        }
+    );
+
+    escenaPrincipal.input.keyboard.once(
+        "keydown-C",
+        function(){
+            responderPregunta(
+                2,
+                preguntas[indice],
+                indice
+            );
+        }
+    );
+
+    actualizarPregunta();
+
+    redimensionarInterfaz();
 }
 
 
-function crearBoton(
-escena,
-texto,
-x,
-y,
-callback
-){
+function mostrarMuerte(){
 
-const boton=
-escena.add.container(
-x,
-y
-);
+    const overlay=escenaPrincipal.add.container(
+        escenaPrincipal.scale.width/2,
+        escenaPrincipal.scale.height/2
+    );
 
+    overlayActual=overlay;
 
-boton.setSize(
-300,
-60
-);
+    const fondo=escenaPrincipal.add.rectangle(
+        0,
+        0,
+        escenaPrincipal.scale.width,
+        escenaPrincipal.scale.height,
+        0x000000,
+        0.75
+    );
 
+    const titulo=escenaPrincipal.add.text(
+        0,
+        -70,
+        "HAS MUERTO",
+        {
+            fontFamily:"Arial",
+            fontSize:"52px",
+            fontStyle:"bold",
+            color:"#ff3333"
+        }
+    ).setOrigin(0.5);
 
-const fondo=
-escena.add.rectangle(
-0,
-0,
-300,
-60,
-0x303044
-);
+    const texto=escenaPrincipal.add.text(
+        0,
+        10,
+        "La partida ha terminado.",
+        {
+            fontFamily:"Arial",
+            fontSize:"22px",
+            color:"#ffffff"
+        }
+    ).setOrigin(0.5);
 
+    const boton=crearBotonMenu(
+        escenaPrincipal,
+        0,
+        100,
+        "VOLVER AL MENÚ",
+        function(){
+            location.reload();
+        }
+    );
 
-const textoBoton=
-escena.add.text(
-0,
-0,
-texto,
-{
-fontSize:"22px",
-color:"#ffffff",
-fontStyle:"bold"
-}
-);
+    overlay.add([
+        fondo,
+        titulo,
+        texto,
+        boton
+    ]);
 
-textoBoton.setOrigin(
-.5
-);
+    overlay.setDepth(3000);
 
-
-boton.add(
-fondo
-);
-
-boton.add(
-textoBoton
-);
-
-
-boton.setInteractive(
-new Phaser.Geom.Rectangle(
--150,
--30,
-300,
-60
-),
-Phaser.Geom.Rectangle.Contains
-);
-
-
-boton.input.cursor=
-"pointer";
-
-
-boton.on(
-"pointerover",
-()=>{
-
-fondo.setFillStyle(
-0x4b4b6b
-);
-
-}
-);
-
-
-boton.on(
-"pointerout",
-()=>{
-
-fondo.setFillStyle(
-0x303044
-);
-
-}
-);
-
-
-boton.on(
-"pointerdown",
-(
-pointer,
-localX,
-localY,
-event
-)=>{
-
-if(event)
-event.stopPropagation();
-
-callback();
-
-}
-);
-
-
-boton.setScrollFactor(
-0
-);
-
-boton.setDepth(
-101
-);
-
-
-return boton;
-
+    redimensionarInterfaz();
 }
 
 
-/* =========================
-   PARTIDA
-========================= */
+function mostrarDerrotaTiempo(){
 
-function iniciarPartida(){
+    juegoCongelado=true;
 
-partidaIniciada=true;
+    const overlay=escenaPrincipal.add.container(
+        escenaPrincipal.scale.width/2,
+        escenaPrincipal.scale.height/2
+    );
 
-juegoCongelado=false;
+    overlayActual=overlay;
 
-jugadorMuerto=false;
+    const fondo=escenaPrincipal.add.rectangle(
+        0,
+        0,
+        escenaPrincipal.scale.width,
+        escenaPrincipal.scale.height,
+        0x000000,
+        0.8
+    );
 
-invulnerable=false;
+    const titulo=escenaPrincipal.add.text(
+        0,
+        -70,
+        "TIEMPO AGOTADO",
+        {
+            fontFamily:"Arial",
+            fontSize:"46px",
+            fontStyle:"bold",
+            color:"#ffcc00"
+        }
+    ).setOrigin(0.5);
 
+    const texto=escenaPrincipal.add.text(
+        0,
+        10,
+        "El tiempo de la partida terminó.",
+        {
+            fontFamily:"Arial",
+            fontSize:"22px",
+            color:"#ffffff"
+        }
+    ).setOrigin(0.5);
 
-vidaJugador=
-vidaMaxima;
+    const boton=crearBotonMenu(
+        escenaPrincipal,
+        0,
+        100,
+        "VOLVER AL MENÚ",
+        function(){
+            location.reload();
+        }
+    );
 
-tiempoRestante=
-tiempoLimite;
+    overlay.add([
+        fondo,
+        titulo,
+        texto,
+        boton
+    ]);
 
+    overlay.setDepth(3000);
 
-rondaActual=1;
-
-generandoNuevaRonda=false;
-
-
-armaActual=
-"PISTOLA";
-
-municion=6;
-
-
-jugador.setPosition(
-1200,
-1200
-);
-
-jugador.setAlpha(
-1
-);
-
-
-enemigos.clear(
-true,
-true
-);
-
-proyectiles.clear(
-true,
-true
-);
-
-proyectilesEnemigos.clear(
-true,
-true
-);
-
-
-crearTextoControles();
-
-iniciarRonda(
-escenaPrincipal
-);
-
-actualizarHUD();
-
+    redimensionarInterfaz();
 }
 
 
-/* =========================
-   CONTROLES
-========================= */
+function mostrarControles(){
 
-function crearTextoControles(){
+    if(menuPrincipal){
+        menuPrincipal.setVisible(false);
+    }
 
-if(
-escenaPrincipal.textoControles
-)
+    const overlay=escenaPrincipal.add.container(
+        escenaPrincipal.scale.width/2,
+        escenaPrincipal.scale.height/2
+    );
 
-escenaPrincipal.textoControles.destroy();
+    overlayActual=overlay;
 
+    const fondo=escenaPrincipal.add.rectangle(
+        0,
+        0,
+        650,
+        500,
+        0x111111,
+        0.98
+    );
 
-escenaPrincipal.textoControles=
-escenaPrincipal.add.text(
-20,
-escenaPrincipal.scale.height-20,
-"WASD: Mover | Click: Disparar | 1/2/3: Cambiar arma",
-{
-fontSize:"16px",
-color:"#ffffff",
-stroke:"#000000",
-strokeThickness:4
-}
-);
+    fondo.setStrokeStyle(
+        4,
+        0x777777,
+        1
+    );
 
+    const titulo=escenaPrincipal.add.text(
+        0,
+        -190,
+        "🎮 CONTROLES",
+        {
+            fontFamily:"Arial",
+            fontSize:"32px",
+            fontStyle:"bold",
+            color:"#ffffff"
+        }
+    ).setOrigin(0.5);
 
-escenaPrincipal.textoControles.setScrollFactor(
-0
-);
+    const texto=escenaPrincipal.add.text(
+        -260,
+        -125,
+        "MOVIMIENTO\n\n"+
+        "W / A / S / D  o  FLECHAS\n\n"+
+        "DISPARAR\n\n"+
+        "CLICK IZQUIERDO\n\n"+
+        "CAMBIAR ARMA\n\n"+
+        "1 = PISTOLA\n"+
+        "2 = RIFLE\n"+
+        "3 = ESCOPETA\n\n"+
+        "Cuando se acaba la munición debes resolver\n"+
+        "las preguntas de cálculo para recargar.",
+        {
+            fontFamily:"Arial",
+            fontSize:"18px",
+            color:"#ffffff",
+            lineSpacing:7
+        }
+    );
 
-escenaPrincipal.textoControles.setDepth(
-200
-);
+    const boton=crearBotonMenu(
+        escenaPrincipal,
+        0,
+        185,
+        "VOLVER",
+        function(){
+            overlay.destroy();
+            overlayActual=null;
 
-escenaPrincipal.textoControles.setOrigin(
-0,
-1
-);
+            menuPrincipal.setVisible(true);
 
+            redimensionarInterfaz();
+        }
+    );
 
-redimensionarInterfaz();
+    overlay.add([
+        fondo,
+        titulo,
+        texto,
+        boton
+    ]);
 
-}
+    overlay.setDepth(2000);
 
-
-/* =========================
-   CONTROLES / CRÉDITOS
-========================= */
-
-function mostrarControles(
-escena
-){
-
-crearOverlayInformativo(
-escena,
-"CONTROLES",
-[
-"W A S D",
-"Mover al jugador",
-"",
-"CLICK IZQUIERDO",
-"Disparar",
-"",
-"1 / 2 / 3",
-"Cambiar arma",
-"",
-"Z / X / C",
-"Responder preguntas matemáticas"
-]
-);
-
-}
-
-
-function mostrarCreditos(
-escena
-){
-
-crearOverlayInformativo(
-escena,
-"CRÉDITOS",
-[
-"Juego de supervivencia por oleadas",
-"",
-"Combate + Matemáticas + Supervivencia",
-"",
-"Proyecto académico"
-]
-);
-
+    redimensionarInterfaz();
 }
 
 
-function crearOverlayInformativo(
-escena,
-tituloTexto,
-lineas
-){
+function mostrarCreditos(){
 
-if(overlayActual)
-overlayActual.destroy();
+    if(menuPrincipal){
+        menuPrincipal.setVisible(false);
+    }
 
+    const overlay=escenaPrincipal.add.container(
+        escenaPrincipal.scale.width/2,
+        escenaPrincipal.scale.height/2
+    );
 
-overlayActual=
-escena.add.container(
-escena.scale.width/2,
-escena.scale.height/2
-);
+    overlayActual=overlay;
 
+    const fondo=escenaPrincipal.add.rectangle(
+        0,
+        0,
+        600,
+        420,
+        0x111111,
+        0.98
+    );
 
-overlayActual.setScrollFactor(
-0
-);
+    fondo.setStrokeStyle(
+        4,
+        0x777777,
+        1
+    );
 
-overlayActual.setDepth(
-600
-);
+    const titulo=escenaPrincipal.add.text(
+        0,
+        -150,
+        "📜 CRÉDITOS",
+        {
+            fontFamily:"Arial",
+            fontSize:"32px",
+            fontStyle:"bold",
+            color:"#ffffff"
+        }
+    ).setOrigin(0.5);
 
+    const texto=escenaPrincipal.add.text(
+        0,
+        -70,
+        "CALABOZO DE LA CADENA\n\n"+
+        "Videojuego educativo de supervivencia\n"+
+        "con desafíos de cálculo diferencial.\n\n"+
+        "Phaser 3.80.1\n\n"+
+        "Proyecto académico",
+        {
+            fontFamily:"Arial",
+            fontSize:"20px",
+            color:"#ffffff",
+            align:"center",
+            lineSpacing:8
+        }
+    ).setOrigin(0.5);
 
-const fondo=
-escena.add.rectangle(
-0,
-0,
-Math.min(
-escena.scale.width*.9,
-650
-),
-Math.min(
-escena.scale.height*.85,
-500
-),
-0x11111a,
-.98
-);
+    const boton=crearBotonMenu(
+        escenaPrincipal,
+        0,
+        140,
+        "VOLVER",
+        function(){
+            overlay.destroy();
+            overlayActual=null;
 
+            menuPrincipal.setVisible(true);
 
-const titulo=
-escena.add.text(
-0,
--180,
-tituloTexto,
-{
-fontSize:"38px",
-color:"#ffffff",
-fontStyle:"bold",
-stroke:"#000000",
-strokeThickness:6
-}
-);
+            redimensionarInterfaz();
+        }
+    );
 
-titulo.setOrigin(
-.5
-);
+    overlay.add([
+        fondo,
+        titulo,
+        texto,
+        boton
+    ]);
 
+    overlay.setDepth(2000);
 
-const contenido=
-escena.add.text(
-0,
--70,
-lineas.join("\n"),
-{
-fontSize:"21px",
-color:"#ffffff",
-align:"center",
-lineSpacing:8,
-wordWrap:{
-width:Math.min(
-escena.scale.width*.75,
-520
-)
-}
-}
-);
-
-contenido.setOrigin(
-.5
-);
-
-
-overlayActual.add(
-fondo
-);
-
-overlayActual.add(
-titulo
-);
-
-overlayActual.add(
-contenido
-);
-
-
-overlayActual.add(
-crearBoton(
-escena,
-"← VOLVER",
-0,
-170,
-()=>{
-
-overlayActual.destroy();
-
-overlayActual=null;
-
-menuPrincipal.setVisible(
-true
-);
-
-redimensionarInterfaz();
-
-}
-)
-);
-
-
-redimensionarInterfaz();
-
+    redimensionarInterfaz();
 }
 
 
-/* =========================
-   MUERTE
-========================= */
+function redimensionarInterfaz(){
 
-function mostrarPantallaMuerte(){
+    if(!escenaPrincipal){
+        return;
+    }
 
-if(overlayActual)
-overlayActual.destroy();
+    const ancho=escenaPrincipal.scale.width;
+    const alto=escenaPrincipal.scale.height;
 
+    const escala=Math.max(
+        0.75,
+        Math.min(
+            1.35,
+            Math.min(
+                ancho/800,
+                alto/600
+            )
+        )
+    );
 
-const escena=
-escenaPrincipal;
+    if(menuPrincipal){
 
+        menuPrincipal.setPosition(
+            ancho/2,
+            alto/2
+        );
 
-overlayActual=
-escena.add.container(
-escena.scale.width/2,
-escena.scale.height/2
-);
+        menuPrincipal.setScale(escala);
+    }
 
+    if(overlayActual){
 
-overlayActual.setScrollFactor(
-0
-);
+        overlayActual.setPosition(
+            ancho/2,
+            alto/2
+        );
 
-overlayActual.setDepth(
-1000
-);
+        overlayActual.setScale(escala);
+    }
 
+    if(textoVida){
 
-const fondo=
-escena.add.rectangle(
-0,
-0,
-escena.scale.width,
-escena.scale.height,
-0x000000,
-.8
-);
+        const escalaHUD=Math.max(
+            0.75,
+            Math.min(1.25,escala)
+        );
 
+        textoVida.setPosition(
+            20,
+            20
+        );
 
-const titulo=
-escena.add.text(
-0,
--70,
-"HAS MUERTO",
-{
-fontSize:"52px",
-color:"#ff3333",
-fontStyle:"bold",
-stroke:"#000000",
-strokeThickness:8
-}
-);
+        textoTiempo.setPosition(
+            20,
+            50
+        );
 
-titulo.setOrigin(
-.5
-);
+        textoArma.setPosition(
+            20,
+            80
+        );
 
+        textoMunicion.setPosition(
+            20,
+            110
+        );
 
-const informacion=
-escena.add.text(
-0,
-20,
-`Llegaste a la ronda ${rondaActual}\n\nRecarga la página para volver a jugar`,
-{
-fontSize:"22px",
-color:"#ffffff",
-align:"center"
-}
-);
+        textoEnemigos.setPosition(
+            20,
+            140
+        );
 
-informacion.setOrigin(
-.5
-);
+        textoRonda.setPosition(
+            ancho-20,
+            20
+        );
 
+        textoControles.setPosition(
+            20,
+            alto-20
+        );
 
-overlayActual.add(
-fondo
-);
-
-overlayActual.add(
-titulo
-);
-
-overlayActual.add(
-informacion
-);
-
-
-redimensionarInterfaz();
-
+        textoVida.setScale(escalaHUD);
+        textoTiempo.setScale(escalaHUD);
+        textoArma.setScale(escalaHUD);
+        textoMunicion.setScale(escalaHUD);
+        textoEnemigos.setScale(escalaHUD);
+        textoRonda.setScale(escalaHUD);
+        textoControles.setScale(escalaHUD);
+    }
 }
 
 </script>
