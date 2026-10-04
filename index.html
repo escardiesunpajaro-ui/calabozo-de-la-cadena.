@@ -1025,6 +1025,37 @@ function update() {
                     50
                 );
 
+                if (
+                    !enemigo.ultimoMinigolem ||
+                    this.time.now -
+                    enemigo.ultimoMinigolem >=
+                    10000
+                ) {
+
+                    if (
+                        enemigo.minigolemsActivos < 4
+                    ) {
+
+                        crearMiniGolems(
+                            this,
+                            enemigo
+                        );
+
+                        enemigo.ultimoMinigolem =
+                            this.time.now;
+                    }
+                }
+
+            } else if (
+                enemigo.tipo === 'Minigolem'
+            ) {
+
+                this.physics.moveToObject(
+                    enemigo,
+                    jugador,
+                    220
+                );
+
             } else if (
                 enemigo.tipo === 'Vortice'
             ) {
@@ -1788,10 +1819,15 @@ function crearEnemigo(
     );
 
 
-    let tamaño =
-        tipo === 'Golem'
-            ? 48
-            : 24;
+    let tamaño;
+
+    if (tipo === 'Golem') {
+        tamaño = 48;
+    } else if (tipo === 'Minigolem') {
+        tamaño = 18;
+    } else {
+        tamaño = 24;
+    }
 
 
     let enemigo =
@@ -1818,10 +1854,107 @@ function crearEnemigo(
     enemigo.ultimoDisparo =
         0;
 
+    enemigo.ultimoMinigolem =
+        0;
+
+    enemigo.minigolemsActivos =
+        0;
+
 
     enemigos.add(
         enemigo
     );
+}
+
+
+// ==================================================
+// CREAR MINIGOLEMS
+// ==================================================
+
+function crearMiniGolems(
+    escena,
+    golem
+) {
+
+    let cantidad =
+        Math.min(
+            2,
+            4 - golem.minigolemsActivos
+        );
+
+    for (
+        let i = 0;
+        i < cantidad;
+        i++
+    ) {
+
+        let angulo =
+            Phaser.Math.FloatBetween(
+                0,
+                Math.PI * 2
+            );
+
+        let distancia = 70;
+
+        let x =
+            golem.x +
+            Math.cos(angulo) *
+            distancia;
+
+        let y =
+            golem.y +
+            Math.sin(angulo) *
+            distancia;
+
+        x = Phaser.Math.Clamp(
+            x,
+            50,
+            2350
+        );
+
+        y = Phaser.Math.Clamp(
+            y,
+            50,
+            2350
+        );
+
+        let minigolem =
+            escena.add.rectangle(
+                x,
+                y,
+                18,
+                18,
+                0xff8844
+            );
+
+        escena.physics.add.existing(
+            minigolem
+        );
+
+        minigolem.tipo =
+            'Minigolem';
+
+        minigolem.hp =
+            20;
+
+        minigolem.ultimoDisparo =
+            0;
+
+        minigolem.ultimoMinigolem =
+            0;
+
+        minigolem.minigolemsActivos =
+            0;
+
+        minigolem.golemPadre =
+            golem;
+
+        enemigos.add(
+            minigolem
+        );
+
+        golem.minigolemsActivos++;
+    }
 }
 
 
@@ -2006,6 +2139,13 @@ function contactoEnemigo(
     ) {
 
         recibirDaño(20);
+    }
+
+    if (
+        enemigo.tipo === 'Minigolem'
+    ) {
+
+        recibirDaño(8);
     }
 }
 
@@ -2218,6 +2358,14 @@ function impactarEnemigo(
             armaActual.dañoGolem;
     }
 
+    if (
+        enemigo.tipo === 'Minigolem'
+    ) {
+
+        daño =
+            armaActual.dañoGolem;
+    }
+
 
     enemigo.hp -= daño;
 
@@ -2225,6 +2373,19 @@ function impactarEnemigo(
     if (
         enemigo.hp <= 0
     ) {
+
+        if (
+            enemigo.tipo === 'Minigolem' &&
+            enemigo.golemPadre &&
+            enemigo.golemPadre.active
+        ) {
+
+            enemigo.golemPadre.minigolemsActivos =
+                Math.max(
+                    0,
+                    enemigo.golemPadre.minigolemsActivos - 1
+                );
+        }
 
         enemigo.destroy();
 
